@@ -1,2 +1,1 @@
-contracts/uniswap/**/*.sol
 contracts/test/**/*.sol
