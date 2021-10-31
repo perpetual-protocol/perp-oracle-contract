@@ -1,10 +1,16 @@
 {
   "name": "@perp/perp-oracle-contract",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "main": "hardhat.config.js",
   "files": [
-    "artifacts/contracts/"
+    "contracts/base",
+    "contracts/interface",
+    "contracts/ChainlinkPriceFeed.sol",
+    "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/**/*.dbg.json",
+    "!artifacts/contracts/test/**/*",
+    "!artifacts/contracts/base/**/*"
   ],
   "scripts": {
     "clean": "rm -rf typechain && rm -rf artifacts && rm -rf cache",
