@@ -1,9 +1,6 @@
+import "@typechain/hardhat"
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-waffle"
-import "@typechain/hardhat"
-import "hardhat-contract-sizer"
-import "hardhat-dependency-compiler"
-import "hardhat-gas-reporter"
 import { HardhatUserConfig } from "hardhat/config"
 import "solidity-coverage"
 
@@ -25,14 +22,6 @@ const config: HardhatUserConfig = {
         hardhat: {
             allowUnlimitedContractSize: true,
         },
-    },
-    contractSizer: {
-        alphaSort: true,
-        runOnCompile: true,
-        disambiguatePaths: false,
-    },
-    gasReporter: {
-        excludeContracts: ["test"],
     },
 }
 

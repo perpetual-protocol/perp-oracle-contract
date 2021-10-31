@@ -1,6 +1,9 @@
 {
     "compilerOptions": {
         "resolveJsonModule": true,
-        "esModuleInterop": true
-    }
+        "esModuleInterop": true,
+        "outDir": "dist"
+    },
+    "include": ["./scripts", "./test", "./typechain"],
+    "files": ["./hardhat.config.ts"]
 }
