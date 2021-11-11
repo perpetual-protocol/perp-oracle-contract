@@ -54,10 +54,15 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
         uint256 previousTimestamp = latestTimestamp;
         uint256 cumulativeTime = _blockTimestamp().sub(previousTimestamp);
         uint256 weightedPrice = latestPrice.mul(cumulativeTime);
+        uint256 timeFraction;
         while (true) {
             if (round == 0) {
+                // To prevent from div 0 error, return the latest price if `cumulativeTime == 0`
+                if (cumulativeTime == 0) {
+                    return latestPrice;
+                }
                 // if cumulative time is less than requested interval, return current twap price
-                return weightedPrice.div(_blockTimestamp().sub(previousTimestamp));
+                return weightedPrice.div(cumulativeTime);
             }
 
             round = round - 1;
@@ -73,7 +78,9 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
                 break;
             }
 
-            weightedPrice = weightedPrice.add(currentPrice.mul(previousTimestamp.sub(currentTimestamp)));
+            timeFraction = previousTimestamp.sub(currentTimestamp);
+            weightedPrice = weightedPrice.add(currentPrice.mul(timeFraction));
+            cumulativeTime = cumulativeTime.add(timeFraction);
             previousTimestamp = currentTimestamp;
         }
         return weightedPrice.div(interval);
