@@ -83,6 +83,9 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
             cumulativeTime = cumulativeTime.add(timeFraction);
             previousTimestamp = currentTimestamp;
         }
+        if (weightedPrice == 0) {
+            return latestPrice;
+        }
         return weightedPrice.div(interval);
     }
 
