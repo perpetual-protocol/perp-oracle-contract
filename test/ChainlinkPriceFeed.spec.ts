@@ -33,6 +33,52 @@ describe("ChainlinkPriceFeed Spec", () => {
         aggregator = _fixture.aggregator
     })
 
+    describe("edge cases, have the same timestamp for several rounds", () => {
+        beforeEach(async () => {
+            // `base` = now - _interval
+            // aggregator's answer
+            // timestamp(base + 0)  : 400
+            // timestamp(base + 15) : 405
+            // timestamp(base + 30) : 410
+            // now = base + 45
+            //
+            //  --+------+-----+-----+-----+-----+-----+
+            //          base                          now
+            const latestTimestamp = (await waffle.provider.getBlock("latest")).timestamp
+            currentTime = latestTimestamp
+            roundData = [
+                // [roundId, answer, startedAt, updatedAt, answeredInRound]
+            ]
+
+            // have the same timestamp for rounds
+            roundData.push([0, parseEther("400"), currentTime, currentTime, 0])
+            roundData.push([1, parseEther("405"), currentTime, currentTime, 1])
+            roundData.push([2, parseEther("410"), currentTime, currentTime, 2])
+
+            aggregator.latestRoundData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            aggregator.getRoundData.returns(round => {
+                return roundData[round]
+            })
+
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+        })
+
+        it("get the latest price", async () => {
+            const price = await chainlinkPriceFeed.getPrice(45)
+            expect(price).to.eq(parseEther("410"))
+        })
+
+        it("asking interval more than aggregator has", async () => {
+            const price = await chainlinkPriceFeed.getPrice(46)
+            expect(price).to.eq(parseEther("410"))
+        })
+    })
+
+
     describe("twap", () => {
         beforeEach(async () => {
             // `base` = now - _interval
