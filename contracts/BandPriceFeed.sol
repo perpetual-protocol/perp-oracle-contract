@@ -91,17 +91,17 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         }
 
         Observation memory lastObservation = observations[observations.length - 1];
-        uint256 latestPriceCumulative =
+        uint256 currentTimestamp = _blockTimestamp();
+        uint256 currentPriceCumulative =
             lastObservation.priceCumulative +
-                (lastObservation.price * (latestBandData.lastUpdatedBase - lastObservation.timestamp));
-        //
-        uint256 latestTimestamp = latestBandData.lastUpdatedBase; // 45, 30
+                (lastObservation.price * (latestBandData.lastUpdatedBase - lastObservation.timestamp)) +
+                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
 
-        uint256 targetTimestamp = _blockTimestamp() - interval;
+        uint256 targetTimestamp = currentTimestamp - interval;
         uint256 index = observations.length - 1;
         uint256 beforeOrAtIndex;
         uint256 atOrAfterIndex;
-        while (index > 0) {
+        while (true) {
             // == case 1 ==
             // now: 3:45
             // target: 3:30
@@ -120,11 +120,15 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
 
             // == case 3 ==
             // now: 3:45
-            // target: 3:30
-            // index 0: 3:20  --> chosen
-            // index 1: 3:40
+            // target: 3:01
+            // index 0: 3:00  --> chosen
+            // index 1: 3:15
+            // index 1: 3:30
             // beforeOrAtIndex = 0
             // atOrAfterIndex = 1
+
+            console.log("index: ", index);
+            console.log("index timestamp: ", observations[index].timestamp);
 
             if (observations[index].timestamp <= targetTimestamp) {
                 beforeOrAtIndex = index;
@@ -135,11 +139,25 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
                 }
                 break;
             }
+            if (index == 0) {
+                break;
+            }
             index = index - 1;
         }
+
         console.log("indexes : ", beforeOrAtIndex, atOrAfterIndex);
         Observation memory beforeOrAtTarget = observations[beforeOrAtIndex];
         Observation memory atOrAfterTarget = observations[atOrAfterIndex];
+
+        if (targetTimestamp < beforeOrAtTarget.timestamp) {
+            // not enough historical data
+            // targetTimestamp --- beforeOrAtTarget --- atOrAfterTarget
+            targetTimestamp = beforeOrAtTarget.timestamp;
+        } else if (targetTimestamp >= atOrAfterTarget.timestamp) {
+            // historical data too old
+            // beforeOrAtTarget --- atOrAfterTarget --- targetTimestamp
+            targetTimestamp = atOrAfterTarget.timestamp;
+        }
 
         uint256 targetPriceCumulative;
         if (beforeOrAtIndex == atOrAfterIndex) {
@@ -172,16 +190,17 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         // twap = 0/123 --> case 1, return price at 2:10
         // twap = 123/0 --> latestBandData.price
         // twap = 123/-456 --> case 1
-        if ((latestTimestamp <= targetTimestamp) || (latestPriceCumulative <= targetPriceCumulative)) {
+
+        if (currentPriceCumulative <= targetPriceCumulative) {
             return latestBandData.rate;
         }
 
-        console.log("latestPriceCumulative", latestPriceCumulative);
+        console.log("latestPriceCumulative", currentPriceCumulative);
         console.log("targetPriceCumulative", targetPriceCumulative);
-        console.log("latestTimestamp", latestTimestamp);
+        console.log("latestTimestamp", currentTimestamp);
         console.log("targetTimestamp", targetTimestamp);
 
-        return (latestPriceCumulative - targetPriceCumulative) / (latestTimestamp - targetTimestamp);
+        return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
     }
 
     //
