@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 import { IStdReference } from "../interface/bandProtocol/IStdReference.sol";
 
 contract TestStdReference is IStdReference {
+    ReferenceData public refData;
+
     constructor() {}
 
     function getReferenceData(string memory _base, string memory _quote)
@@ -13,7 +15,7 @@ contract TestStdReference is IStdReference {
         override
         returns (ReferenceData memory)
     {
-        revert();
+        return refData;
     }
 
     function getReferenceDataBulk(string[] memory _bases, string[] memory _quotes)
