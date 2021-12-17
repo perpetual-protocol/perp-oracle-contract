@@ -65,8 +65,8 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             });
         } else {
             // BPF_IT: invalid timestamp
-            require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
             lastObservation = observations[observations.length - 1];
+            require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
         }
 
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
