@@ -25,12 +25,16 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
 
     string public baseAsset;
     IStdReference public stdRef;
-    Observation[] public observations; // TODO: restrict array size
+    // let's use 15 mins and 1 hr twap as example
+    // if the price is being updated 15 secs, then needs 60 and 240 historical data for 15mins and 1hr twap.
+    Observation[256] public observations;
 
-    uint256 latestUpdatedTimestamp;
-    uint256 latestUpdatedTwap;
+    uint8 public currentObservationIndex;
+    // cache the lastest twap
+    uint256 public latestUpdatedTimestamp;
+    uint256 public latestUpdatedTwap;
 
-    event PriceUpdated(string indexed baseAsset, uint256 price, uint256 timestamp);
+    event PriceUpdated(string indexed baseAsset, uint256 price, uint256 timestamp, uint8 indexAt);
 
     //
     // EXTERNAL NON-VIEW
@@ -44,9 +48,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         baseAsset = baseAssetArg;
     }
 
-    // TODO: onlyKeeper
-    // TODO: use the timestamp sent by keeper (keeper queryies L1 timestamp)
-    /// @dev will be called by a keeper
+    /// @dev anyone can help update it.
     function update() external {
         IStdReference.ReferenceData memory bandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
         // BPF_TQZ: timestamp for quote is zero
@@ -57,7 +59,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         require(bandData.rate > 0, "BPF_IP");
 
         Observation memory lastObservation;
-        if (observations.length == 0) {
+        if (currentObservationIndex == 0) {
             lastObservation = Observation({
                 price: bandData.rate,
                 priceCumulative: 0,
@@ -65,44 +67,33 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             });
         } else {
             // BPF_IT: invalid timestamp
-            lastObservation = observations[observations.length - 1];
+            lastObservation = observations[currentObservationIndex - 1];
             require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
         }
 
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
-        observations.push(
-            Observation({
-                priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
-                timestamp: bandData.lastUpdatedBase,
-                price: bandData.rate
-            })
-        );
+        // overflow is desired
+        observations[currentObservationIndex++] = Observation({
+            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
+            timestamp: bandData.lastUpdatedBase,
+            price: bandData.rate
+        });
 
-        emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase);
+        emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex - 1);
     }
 
     //
     // EXTERNAL VIEW
     //
 
-    function getPrice(uint256 interval) external view override returns (uint256) {
-        IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
-        // TODO add comment to explain why it's `<= 1`
-        if (interval == 0 || observations.length <= 1) {
-            return latestBandData.rate;
-        }
-
-        Observation memory lastObservation = observations[observations.length - 1];
-        uint256 currentTimestamp = _blockTimestamp();
-        uint256 currentPriceCumulative =
-            lastObservation.priceCumulative +
-                (lastObservation.price * (latestBandData.lastUpdatedBase - lastObservation.timestamp)) +
-                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
-
-        uint256 targetTimestamp = currentTimestamp - interval;
-        uint256 index = observations.length - 1;
-        uint256 beforeOrAtIndex;
-        uint256 atOrAfterIndex;
+    function getSurroundingObservations(uint256 targetTimestamp)
+        internal
+        view
+        returns (Observation memory beforeOrAt, Observation memory atOrAfter)
+    {
+        uint8 index = currentObservationIndex - 1;
+        uint8 beforeOrAtIndex;
+        uint8 atOrAfterIndex;
         while (true) {
             // == case 1 ==
             // now: 3:45
@@ -133,74 +124,99 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             console.log("index timestamp: ", observations[index].timestamp);
 
             if (observations[index].timestamp <= targetTimestamp) {
+                // if the next observation is empty, use the last one
+                if (observations[index].timestamp == 0) {
+                    atOrAfterIndex = beforeOrAtIndex = index + 1;
+                    break;
+                }
                 beforeOrAtIndex = index;
                 atOrAfterIndex = beforeOrAtIndex + 1;
-                // only happens when requested interval is later than the timestamp of the last observation
-                if (atOrAfterIndex >= observations.length) {
-                    atOrAfterIndex = beforeOrAtIndex;
-                }
                 break;
             }
-            if (index == 0) {
-                break;
-            }
-            index = index - 1;
+            index--;
         }
 
         console.log("indexes : ", beforeOrAtIndex, atOrAfterIndex);
-        Observation memory beforeOrAtTarget = observations[beforeOrAtIndex];
-        Observation memory atOrAfterTarget = observations[atOrAfterIndex];
+        beforeOrAt = observations[beforeOrAtIndex];
+        atOrAfter = observations[atOrAfterIndex];
+        // if the timestamp of right bound is earlier than the timestamp of left bound,
+        // it means the left bound is the lastest observation.
+        // Then we set the right bound to the left bound.
+        if (atOrAfter.timestamp < beforeOrAt.timestamp) {
+            atOrAfter = beforeOrAt;
+        }
+    }
 
-        if (targetTimestamp < beforeOrAtTarget.timestamp) {
-            // not enough historical data
-            // targetTimestamp --- beforeOrAtTarget --- atOrAfterTarget
-            targetTimestamp = beforeOrAtTarget.timestamp;
-        } else if (targetTimestamp >= atOrAfterTarget.timestamp) {
-            // historical data too old
-            // beforeOrAtTarget --- atOrAfterTarget --- targetTimestamp
-            targetTimestamp = atOrAfterTarget.timestamp;
+    function getPrice(uint256 interval) external view override returns (uint256) {
+        IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
+        if (interval == 0) {
+            return latestBandData.rate;
         }
 
+        uint256 currentTimestamp = _blockTimestamp();
+        uint256 targetTimestamp = currentTimestamp - interval;
+        (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
+
+        Observation memory lastestObservation = observations[currentObservationIndex - 1];
+        uint256 currentPriceCumulative =
+            lastestObservation.priceCumulative +
+                (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
+                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
+        console.log("currentPriceCumulative", currentPriceCumulative);
+
+        //
+        //                   beforeOrAt                    atOrAfter
+        //      ---------+---------+-------------+---------------+---------+---------
+        //               |                       |                         |
+        // case 1  targetTimestamp               |                         |
+        // case 2                                |                   targetTimestamp
+        // case 3                          targetTimestamp
+        //
         uint256 targetPriceCumulative;
-        if (beforeOrAtIndex == atOrAfterIndex) {
-            console.log("beforeOrAtIndex == atOrAfterIndex");
-            targetPriceCumulative = beforeOrAtTarget.priceCumulative;
-        } else {
-            if (targetTimestamp == beforeOrAtTarget.timestamp) {
-                // we're at the left boundary
-                targetPriceCumulative = beforeOrAtTarget.priceCumulative;
+        // case1. not enough historical data
+        if (targetTimestamp < beforeOrAt.timestamp) {
+            console.log("case 1");
+            targetTimestamp = beforeOrAt.timestamp;
+            targetPriceCumulative = beforeOrAt.priceCumulative;
+        }
+        // case2. the latest data is older than requested
+        else if (atOrAfter.timestamp <= targetTimestamp) {
+            console.log("case 2");
+            targetTimestamp = atOrAfter.timestamp;
+            targetPriceCumulative = atOrAfter.priceCumulative;
+        }
+        // TODO figure it out. could be either case1 or case2
+        else if (atOrAfter.timestamp == beforeOrAt.timestamp) {
+            console.log("case 1 or case 2");
+            targetPriceCumulative = beforeOrAt.priceCumulative;
+        }
+        // case3 at beforeOrAt or at atOrAfter or in the middle
+        else {
+            // we're at the left boundary
+            if (targetTimestamp == beforeOrAt.timestamp) {
+                targetPriceCumulative = beforeOrAt.priceCumulative;
                 console.log("we're at the left boundary");
-            } else if (targetTimestamp == atOrAfterTarget.timestamp) {
-                // we're at the right boundary
-                targetPriceCumulative = atOrAfterTarget.priceCumulative;
+            }
+            // we're at the right boundary
+            else if (targetTimestamp == atOrAfter.timestamp) {
+                targetPriceCumulative = atOrAfter.priceCumulative;
                 console.log("we're at the right boundary");
-            } else {
-                // we're in the middle
-                uint256 observationTimeDelta = atOrAfterTarget.timestamp - beforeOrAtTarget.timestamp;
-                uint256 targetTimeDelta = targetTimestamp - beforeOrAtTarget.timestamp;
+            }
+            // we're in the middle
+            else {
+                uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+                uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
                 targetPriceCumulative =
-                    beforeOrAtTarget.priceCumulative +
-                    ((atOrAfterTarget.priceCumulative - beforeOrAtTarget.priceCumulative) * targetTimeDelta) /
+                    beforeOrAt.priceCumulative +
+                    ((atOrAfter.priceCumulative - beforeOrAt.priceCumulative) * targetTimeDelta) /
                     observationTimeDelta;
 
                 console.log("targetPriceCumulative", targetPriceCumulative);
             }
         }
 
-        // TODO: if twap <= 0?
-        // case 2 end == beforeOrAtTarget || end == atOrAfterTarget
-        // twap = 0/123 --> case 1, return price at 2:10
-        // twap = 123/0 --> latestBandData.price
-        // twap = 123/-456 --> case 1
-
-        if (currentPriceCumulative <= targetPriceCumulative) {
-            return latestBandData.rate;
-        }
-
-        console.log("latestPriceCumulative", currentPriceCumulative);
+        console.log("currentPriceCumulative", currentPriceCumulative);
         console.log("targetPriceCumulative", targetPriceCumulative);
-        console.log("latestTimestamp", currentTimestamp);
-        console.log("targetTimestamp", targetTimestamp);
 
         return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
     }

@@ -155,6 +155,11 @@ describe("BandPriceFeed Spec", () => {
             expect(price).to.eq("405113636363636363636")
         })
 
+        it("asking interval less the timestamp of the latest observation", async () => {
+            const price = await bandPriceFeed.getPrice(14)
+            expect(price).to.eq(parseEther("410"))
+        })
+
         it("the latest band reference data is not being updated to observation", async () => {
             currentTime += 15
             roundData.push([parseEther("415"), currentTime, currentTime])
