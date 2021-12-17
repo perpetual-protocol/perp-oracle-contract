@@ -44,6 +44,8 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         baseAsset = baseAssetArg;
     }
 
+    // TODO: onlyKeeper
+    // TODO: use the timestamp sent by keeper (keeper queryies L1 timestamp)
     /// @dev will be called by a keeper
     function update() external {
         IStdReference.ReferenceData memory bandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);

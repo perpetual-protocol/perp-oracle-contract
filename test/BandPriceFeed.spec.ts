@@ -34,6 +34,53 @@ describe.only("BandPriceFeed Spec", () => {
         bandPriceFeed = _fixture.bandPriceFeed
     })
 
+    describe.only("update", () => {
+        let currentTime
+        let roundData = [
+            // [rate, lastUpdatedBase, lastUpdatedQuote]
+        ]
+        beforeEach(async () => {
+            currentTime = (await waffle.provider.getBlock("latest")).timestamp
+        })
+
+        it("update price once", async () => {
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+
+            expect(await bandPriceFeed.update())
+                .to.be.emit(bandPriceFeed, "PriceUpdated")
+                .withArgs("ETH", parseEther("400"), currentTime)
+
+            const observation = await bandPriceFeed.observations(0)
+            const round = roundData[0]
+            expect(observation.price).to.eq(round[0])
+            expect(observation.timestamp).to.eq(round[1])
+            expect(observation.priceCumulative).to.eq(0)
+        })
+
+        it("update price twice", async () => {
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            roundData.push([parseEther("440"), currentTime + 15, currentTime + 15])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            const observation = await bandPriceFeed.observations(1)
+            const round = roundData[1]
+            expect(observation.price).to.eq(round[0])
+            expect(observation.timestamp).to.eq(round[1])
+            expect(observation.priceCumulative).to.eq(6000)
+        })
+    })
+
     describe("twap", () => {
         beforeEach(async () => {
             // `base` = now - _interval
@@ -131,55 +178,55 @@ describe.only("BandPriceFeed Spec", () => {
         })
     })
 
-    // describe("edge cases, have the same timestamp for several rounds", () => {
-    //     beforeEach(async () => {
-    //         // `base` = now - _interval
-    //         // bandReference's answer
-    //         // timestamp(base + 0)  : 400
-    //         // timestamp(base + 15) : 405
-    //         // timestamp(base + 30) : 410
-    //         // now = base + 45
-    //         //
-    //         //  --+------+-----+-----+-----+-----+-----+
-    //         //          base                          now
-    //         const latestTimestamp = (await waffle.provider.getBlock("latest")).timestamp
-    //         currentTime = latestTimestamp
-    //         roundData = [
-    //             // [rate, lastUpdatedBase, lastUpdatedQuote]
-    //         ]
+    describe("edge cases, have the same timestamp for several rounds", () => {
+        beforeEach(async () => {
+            // `base` = now - _interval
+            // bandReference's answer
+            // timestamp(base + 0)  : 400
+            // timestamp(base + 15) : 405
+            // timestamp(base + 30) : 410
+            // now = base + 45
+            //
+            //  --+------+-----+-----+-----+-----+-----+
+            //          base                          now
+            const latestTimestamp = (await waffle.provider.getBlock("latest")).timestamp
+            currentTime = latestTimestamp
+            roundData = [
+                // [rate, lastUpdatedBase, lastUpdatedQuote]
+            ]
 
-    //         // have the same timestamp for rounds
-    //         roundData.push([parseEther("400"), currentTime, currentTime])
-    //         bandReference.getReferenceData.returns(() => {
-    //             return roundData[roundData.length - 1]
-    //         })
-    //         await bandPriceFeed.update()
+            // have the same timestamp for rounds
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
 
-    //         roundData.push([parseEther("405"), currentTime, currentTime])
-    //         bandReference.getReferenceData.returns(() => {
-    //             return roundData[roundData.length - 1]
-    //         })
-    //         await bandPriceFeed.update()
+            roundData.push([parseEther("405"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
 
-    //         roundData.push([parseEther("410"), currentTime, currentTime])
-    //         bandReference.getReferenceData.returns(() => {
-    //             return roundData[roundData.length - 1]
-    //         })
-    //         await bandPriceFeed.update()
+            roundData.push([parseEther("410"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
 
-    //         currentTime += 15
-    //         await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
-    //         await ethers.provider.send("evm_mine", [])
-    //     })
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+        })
 
-    //     it("get the latest price ", async () => {
-    //         const price = await bandPriceFeed.getPrice(45)
-    //         expect(price).to.eq(parseEther("410"))
-    //     })
+        it("get the latest price ", async () => {
+            const price = await bandPriceFeed.getPrice(45)
+            expect(price).to.eq(parseEther("410"))
+        })
 
-    //     it("asking interval more than bandReference has", async () => {
-    //         const price = await bandPriceFeed.getPrice(46)
-    //         expect(price).to.eq(parseEther("410"))
-    //     })
-    // })
+        it("asking interval more than bandReference has", async () => {
+            const price = await bandPriceFeed.getPrice(46)
+            expect(price).to.eq(parseEther("410"))
+        })
+    })
 })
