@@ -4,37 +4,42 @@ pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { ICachedPriceFeed } from "./interface/ICachedPriceFeed.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
-import "hardhat/console.sol";
 
-contract BandPriceFeed is IPriceFeed, BlockContext {
+contract BandPriceFeed is ICachedPriceFeed, BlockContext {
     using Address for address;
 
     //
     // STRUCT
     //
-
     struct Observation {
         uint256 price;
         uint256 priceCumulative;
         uint256 timestamp;
     }
 
+    //
+    // EVENT
+    //
+
+    event PriceUpdated(string indexed baseAsset, uint256 price, uint256 timestamp, uint8 indexAt);
+
+    //
+    // STATE
+    //
     string public constant QUOTE_ASSET = "USD";
 
     string public baseAsset;
-    IStdReference public stdRef;
     // let's use 15 mins and 1 hr twap as example
     // if the price is being updated 15 secs, then needs 60 and 240 historical data for 15mins and 1hr twap.
     Observation[256] public observations;
 
+    IStdReference public stdRef;
     uint8 public currentObservationIndex;
     // cache the lastest twap
     uint256 public latestUpdatedTimestamp;
-    uint256 public latestUpdatedTwap;
-
-    event PriceUpdated(string indexed baseAsset, uint256 price, uint256 timestamp, uint8 indexAt);
+    uint256 public latestUpdated15MinsTwap;
 
     //
     // EXTERNAL NON-VIEW
@@ -58,21 +63,24 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         // BPF_IP: invalid price
         require(bandData.rate > 0, "BPF_IP");
 
-        Observation memory lastObservation;
-        if (currentObservationIndex == 0) {
-            lastObservation = Observation({
+        // for the first time update
+        if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
+            observations[0] = Observation({
                 price: bandData.rate,
                 priceCumulative: 0,
                 timestamp: bandData.lastUpdatedBase
             });
-        } else {
-            // BPF_IT: invalid timestamp
-            lastObservation = observations[currentObservationIndex - 1];
-            require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
+            currentObservationIndex++;
+            emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, 0);
+            return;
         }
 
+        // BPF_IT: invalid timestamp
+        Observation memory lastObservation = observations[currentObservationIndex - 1];
+        require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
+
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
-        // overflow is desired
+        // overflow of currentObservationIndex is desired
         observations[currentObservationIndex++] = Observation({
             priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
             timestamp: bandData.lastUpdatedBase,
@@ -82,8 +90,84 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex - 1);
     }
 
+    function cachePrice(uint256 interval) external override returns (uint256) {
+        uint256 currentTimestamp = _blockTimestamp();
+        // the cache only works for 15 mins twap
+        if (interval == 900) {
+            if (currentTimestamp == latestUpdatedTimestamp) {
+                return latestUpdated15MinsTwap;
+            }
+
+            // update cache
+            latestUpdated15MinsTwap = getPrice(interval);
+            latestUpdatedTimestamp = currentTimestamp;
+            return latestUpdated15MinsTwap;
+        }
+        return getPrice(interval);
+    }
+
     //
     // EXTERNAL VIEW
+    //
+
+    function getPrice(uint256 interval) public view override returns (uint256) {
+        IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
+        if (interval == 0) {
+            return latestBandData.rate;
+        }
+
+        uint256 currentTimestamp = _blockTimestamp();
+        uint256 targetTimestamp = currentTimestamp - interval;
+        (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
+
+        Observation memory lastestObservation = observations[currentObservationIndex - 1];
+        uint256 currentPriceCumulative =
+            lastestObservation.priceCumulative +
+                (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
+                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
+
+        //
+        //                   beforeOrAt                    atOrAfter
+        //      ---------+---------+-------------+---------------+---------+---------
+        //               |<------->|             |               |         |
+        // case 1       targetTimestamp          |               |<------->|
+        // case 2                                |              targetTimestamp
+        // case 3                          targetTimestamp
+        //
+        uint256 targetPriceCumulative;
+        // case1. not enough historical data or just enough (`==` case)
+        if (targetTimestamp <= beforeOrAt.timestamp) {
+            targetTimestamp = beforeOrAt.timestamp;
+            targetPriceCumulative = beforeOrAt.priceCumulative;
+        }
+        // case2. the latest data is older than or equal the request
+        else if (atOrAfter.timestamp <= targetTimestamp) {
+            targetTimestamp = atOrAfter.timestamp;
+            targetPriceCumulative = atOrAfter.priceCumulative;
+        }
+        // case3. in the middle
+        else {
+            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+            targetPriceCumulative =
+                beforeOrAt.priceCumulative +
+                ((atOrAfter.priceCumulative - beforeOrAt.priceCumulative) * targetTimeDelta) /
+                observationTimeDelta;
+        }
+
+        return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
+    }
+
+    //
+    // EXTERNAL PURE
+    //
+
+    function decimals() external pure override returns (uint8) {
+        return 18;
+    }
+
+    //
+    // INTERNAL VIEW
     //
 
     function getSurroundingObservations(uint256 targetTimestamp)
@@ -120,11 +204,9 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             // beforeOrAtIndex = 0
             // atOrAfterIndex = 1
 
-            console.log("index: ", index);
-            console.log("index timestamp: ", observations[index].timestamp);
-
             if (observations[index].timestamp <= targetTimestamp) {
-                // if the next observation is empty, use the last one
+                // if the next observation is empty, using the last one
+                // it implies the historical data is not enough
                 if (observations[index].timestamp == 0) {
                     atOrAfterIndex = beforeOrAtIndex = index + 1;
                     break;
@@ -136,96 +218,14 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             index--;
         }
 
-        console.log("indexes : ", beforeOrAtIndex, atOrAfterIndex);
         beforeOrAt = observations[beforeOrAtIndex];
         atOrAfter = observations[atOrAfterIndex];
-        // if the timestamp of right bound is earlier than the timestamp of left bound,
+        // if timestamp of the right bound is earlier than timestamp of the left bound,
         // it means the left bound is the lastest observation.
+        // It implies the latest observation is older than requested
         // Then we set the right bound to the left bound.
         if (atOrAfter.timestamp < beforeOrAt.timestamp) {
             atOrAfter = beforeOrAt;
         }
-    }
-
-    function getPrice(uint256 interval) external view override returns (uint256) {
-        IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
-        if (interval == 0) {
-            return latestBandData.rate;
-        }
-
-        uint256 currentTimestamp = _blockTimestamp();
-        uint256 targetTimestamp = currentTimestamp - interval;
-        (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
-
-        Observation memory lastestObservation = observations[currentObservationIndex - 1];
-        uint256 currentPriceCumulative =
-            lastestObservation.priceCumulative +
-                (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
-                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
-        console.log("currentPriceCumulative", currentPriceCumulative);
-
-        //
-        //                   beforeOrAt                    atOrAfter
-        //      ---------+---------+-------------+---------------+---------+---------
-        //               |                       |                         |
-        // case 1  targetTimestamp               |                         |
-        // case 2                                |                   targetTimestamp
-        // case 3                          targetTimestamp
-        //
-        uint256 targetPriceCumulative;
-        // case1. not enough historical data
-        if (targetTimestamp < beforeOrAt.timestamp) {
-            console.log("case 1");
-            targetTimestamp = beforeOrAt.timestamp;
-            targetPriceCumulative = beforeOrAt.priceCumulative;
-        }
-        // case2. the latest data is older than requested
-        else if (atOrAfter.timestamp <= targetTimestamp) {
-            console.log("case 2");
-            targetTimestamp = atOrAfter.timestamp;
-            targetPriceCumulative = atOrAfter.priceCumulative;
-        }
-        // TODO figure it out. could be either case1 or case2
-        else if (atOrAfter.timestamp == beforeOrAt.timestamp) {
-            console.log("case 1 or case 2");
-            targetPriceCumulative = beforeOrAt.priceCumulative;
-        }
-        // case3 at beforeOrAt or at atOrAfter or in the middle
-        else {
-            // we're at the left boundary
-            if (targetTimestamp == beforeOrAt.timestamp) {
-                targetPriceCumulative = beforeOrAt.priceCumulative;
-                console.log("we're at the left boundary");
-            }
-            // we're at the right boundary
-            else if (targetTimestamp == atOrAfter.timestamp) {
-                targetPriceCumulative = atOrAfter.priceCumulative;
-                console.log("we're at the right boundary");
-            }
-            // we're in the middle
-            else {
-                uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-                uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
-                targetPriceCumulative =
-                    beforeOrAt.priceCumulative +
-                    ((atOrAfter.priceCumulative - beforeOrAt.priceCumulative) * targetTimeDelta) /
-                    observationTimeDelta;
-
-                console.log("targetPriceCumulative", targetPriceCumulative);
-            }
-        }
-
-        console.log("currentPriceCumulative", currentPriceCumulative);
-        console.log("targetPriceCumulative", targetPriceCumulative);
-
-        return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
-    }
-
-    //
-    // EXTERNAL PURE
-    //
-
-    function decimals() external pure override returns (uint8) {
-        return 18;
     }
 }
