@@ -4,10 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { ICachedPriceFeed } from "./interface/ICachedPriceFeed.sol";
+// import { ICachedPriceFeed } from "./interface/ICachedPriceFeed.sol";
+import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
 
-contract BandPriceFeed is ICachedPriceFeed, BlockContext {
+contract BandPriceFeed is IPriceFeed, BlockContext {
     using Address for address;
 
     //
@@ -19,10 +20,10 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         uint256 timestamp;
     }
 
-    struct CachedTwap {
-        uint256 timestamp;
-        uint256 twap;
-    }
+    // struct CachedTwap {
+    //     uint256 timestamp;
+    //     uint256 twap;
+    // }
 
     //
     // EVENT
@@ -42,8 +43,9 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
 
     IStdReference public stdRef;
     uint8 public currentObservationIndex;
+
     // cache the lastest twap
-    mapping(uint256 => CachedTwap) public cachedTwapMap;
+    // mapping(uint256 => CachedTwap) public cachedTwapMap;
 
     //
     // EXTERNAL NON-VIEW
@@ -96,25 +98,25 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex);
     }
 
-    // TODO: naming cachePriceAndGetPrice?
-    function cachePrice(uint256 interval) external override returns (uint256) {
-        if (interval == 0) {
-            return getPrice(interval);
-        }
+    // TODO: should ChainlinkPriceFeed also have this?
+    // function cachePrice(uint256 interval) external override returns (uint256) {
+    //     if (interval == 0) {
+    //         return getPrice(interval);
+    //     }
 
-        uint256 currentTimestamp = _blockTimestamp();
+    //     uint256 currentTimestamp = _blockTimestamp();
 
-        CachedTwap storage cachedTwapStorage = cachedTwapMap[interval];
-        if (cachedTwapStorage.timestamp == currentTimestamp) {
-            return cachedTwapStorage.twap;
-        }
+    //     CachedTwap storage cachedTwapStorage = cachedTwapMap[interval];
+    //     if (cachedTwapStorage.timestamp == currentTimestamp) {
+    //         return cachedTwapStorage.twap;
+    //     }
 
-        // update cache
-        cachedTwapStorage.timestamp = currentTimestamp;
-        cachedTwapStorage.twap = getPrice(interval);
+    //     // update cache
+    //     cachedTwapStorage.timestamp = currentTimestamp;
+    //     cachedTwapStorage.twap = getPrice(interval);
 
-        return cachedTwapStorage.twap;
-    }
+    //     return cachedTwapStorage.twap;
+    // }
 
     //
     // EXTERNAL VIEW
@@ -138,10 +140,10 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
 
         //
         //                   beforeOrAt                    atOrAfter
-        //      ---------+---------+-------------+---------------+---------+---------
-        //               |<------->|             |               |         |
-        // case 1       targetTimestamp          |               |<------->|
-        // case 2                                |              targetTimestamp
+        //      ------------------+-------------+---------------+------------------
+        //                <-------|             |               |
+        // case 1       targetTimestamp         |               |------->
+        // case 2                               |              targetTimestamp
         // case 3                          targetTimestamp
         //
         uint256 targetPriceCumulative;
@@ -189,6 +191,31 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         uint8 beforeOrAtIndex;
         uint8 atOrAfterIndex;
 
+        // == case 1 ==
+        // now: 3:45
+        // target: 3:30
+        // index 0: 3:40  --> chosen
+        // index 1: 3:50
+        // beforeOrAtIndex = 0
+        // atOrAfterIndex = 0
+
+        // == case 2 ==
+        // now: 3:45
+        // target: 3:30
+        // index 0: 2:00
+        // index 1: 2:10 --> chosen
+        // beforeOrAtIndex = 1
+        // atOrAfterIndex = 1
+
+        // == case 3 ==
+        // now: 3:45
+        // target: 3:01
+        // index 0: 3:00  --> chosen
+        // index 1: 3:15
+        // index 2: 3:30
+        // beforeOrAtIndex = 0
+        // atOrAfterIndex = 1
+
         // run at most 256 times
         uint256 observationLen = observations.length;
         uint256 i;
@@ -207,51 +234,11 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
             index--;
         }
 
-        // if `i == observationLen`, it means not enough historical data to query
+        // not enough historical data to query
         if (i == observationLen) {
             // BPF_NEH: no enough historical data
             revert("BPF_NEH");
         }
-
-        // while (true) {
-        //     // == case 1 ==
-        //     // now: 3:45
-        //     // target: 3:30
-        //     // index 0: 2:00
-        //     // index 1: 2:10 --> chosen
-        //     // beforeOrAtIndex = 1
-        //     // atOrAfterIndex = 1
-
-        //     // == case 2 ==
-        //     // now: 3:45
-        //     // target: 3:30
-        //     // index 0: 3:40  --> chosen
-        //     // index 1: 3:50
-        //     // beforeOrAtIndex = 0
-        //     // atOrAfterIndex = 0
-
-        //     // == case 3 ==
-        //     // now: 3:45
-        //     // target: 3:01
-        //     // index 0: 3:00  --> chosen
-        //     // index 1: 3:15
-        //     // index 1: 3:30
-        //     // beforeOrAtIndex = 0
-        //     // atOrAfterIndex = 1
-
-        //     if (observations[index].timestamp <= targetTimestamp) {
-        //         // if the next observation is empty, using the last one
-        //         // it implies the historical data is not enough
-        //         if (observations[index].timestamp == 0) {
-        //             atOrAfterIndex = beforeOrAtIndex = index + 1;
-        //             break;
-        //         }
-        //         beforeOrAtIndex = index;
-        //         atOrAfterIndex = beforeOrAtIndex + 1;
-        //         break;
-        //     }
-        //     index--;
-        // }
 
         beforeOrAt = observations[beforeOrAtIndex];
         atOrAfter = observations[atOrAfterIndex];
