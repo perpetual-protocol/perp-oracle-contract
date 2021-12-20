@@ -74,25 +74,26 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
                 priceCumulative: 0,
                 timestamp: bandData.lastUpdatedBase
             });
-            currentObservationIndex++;
             emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, 0);
             return;
         }
+
+        // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
+        // so 255 + 1 will be 0
+        currentObservationIndex++;
 
         // BPF_IT: invalid timestamp
         Observation memory lastObservation = observations[currentObservationIndex - 1];
         require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
 
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
-        // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0-255),
-        // so 255 + 1 will be 0
-        observations[currentObservationIndex++] = Observation({
+        observations[currentObservationIndex] = Observation({
             priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
             timestamp: bandData.lastUpdatedBase,
             price: bandData.rate
         });
 
-        emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex - 1);
+        emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex);
     }
 
     // TODO: naming cachePriceAndGetPrice?
@@ -129,7 +130,7 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         uint256 targetTimestamp = currentTimestamp - interval;
         (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
 
-        Observation memory lastestObservation = observations[currentObservationIndex - 1];
+        Observation memory lastestObservation = observations[currentObservationIndex];
         uint256 currentPriceCumulative =
             lastestObservation.priceCumulative +
                 (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
@@ -184,35 +185,14 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
     {
-        uint8 index = currentObservationIndex - 1;
+        uint8 index = currentObservationIndex;
         uint8 beforeOrAtIndex;
         uint8 atOrAfterIndex;
-        while (true) {
-            // == case 1 ==
-            // now: 3:45
-            // target: 3:30
-            // index 0: 2:00
-            // index 1: 2:10 --> chosen
-            // beforeOrAtIndex = 1
-            // atOrAfterIndex = 1
 
-            // == case 2 ==
-            // now: 3:45
-            // target: 3:30
-            // index 0: 3:40  --> chosen
-            // index 1: 3:50
-            // beforeOrAtIndex = 0
-            // atOrAfterIndex = 0
-
-            // == case 3 ==
-            // now: 3:45
-            // target: 3:01
-            // index 0: 3:00  --> chosen
-            // index 1: 3:15
-            // index 1: 3:30
-            // beforeOrAtIndex = 0
-            // atOrAfterIndex = 1
-
+        // run at most 256 times
+        uint256 observationLen = observations.length;
+        uint256 i;
+        for (i = 0; i < observationLen; i++) {
             if (observations[index].timestamp <= targetTimestamp) {
                 // if the next observation is empty, using the last one
                 // it implies the historical data is not enough
@@ -227,8 +207,55 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
             index--;
         }
 
+        // if `i == observationLen`, it means not enough historical data to query
+        if (i == observationLen) {
+            // BPF_NEH: no enough historical data
+            revert("BPF_NEH");
+        }
+
+        // while (true) {
+        //     // == case 1 ==
+        //     // now: 3:45
+        //     // target: 3:30
+        //     // index 0: 2:00
+        //     // index 1: 2:10 --> chosen
+        //     // beforeOrAtIndex = 1
+        //     // atOrAfterIndex = 1
+
+        //     // == case 2 ==
+        //     // now: 3:45
+        //     // target: 3:30
+        //     // index 0: 3:40  --> chosen
+        //     // index 1: 3:50
+        //     // beforeOrAtIndex = 0
+        //     // atOrAfterIndex = 0
+
+        //     // == case 3 ==
+        //     // now: 3:45
+        //     // target: 3:01
+        //     // index 0: 3:00  --> chosen
+        //     // index 1: 3:15
+        //     // index 1: 3:30
+        //     // beforeOrAtIndex = 0
+        //     // atOrAfterIndex = 1
+
+        //     if (observations[index].timestamp <= targetTimestamp) {
+        //         // if the next observation is empty, using the last one
+        //         // it implies the historical data is not enough
+        //         if (observations[index].timestamp == 0) {
+        //             atOrAfterIndex = beforeOrAtIndex = index + 1;
+        //             break;
+        //         }
+        //         beforeOrAtIndex = index;
+        //         atOrAfterIndex = beforeOrAtIndex + 1;
+        //         break;
+        //     }
+        //     index--;
+        // }
+
         beforeOrAt = observations[beforeOrAtIndex];
         atOrAfter = observations[atOrAfterIndex];
+
         // if timestamp of the right bound is earlier than timestamp of the left bound,
         // it means the left bound is the lastest observation.
         // It implies the latest observation is older than requested

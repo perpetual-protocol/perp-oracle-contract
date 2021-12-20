@@ -261,15 +261,18 @@ describe.only("BandPriceFeed Spec", () => {
     })
 
     describe("circular observations", () => {
+        let currentTimeBefore
         let currentTime
+        let beginPrice = 400
         let roundData = [
             // [rate, lastUpdatedBase, lastUpdatedQuote]
         ]
         beforeEach(async () => {
-            currentTime = (await waffle.provider.getBlock("latest")).timestamp
+            currentTimeBefore = currentTime = (await waffle.provider.getBlock("latest")).timestamp
 
-            const beginPrice: number = 400
-            for (let i = 0; i < 256; i++) {
+            // fill up 255 observations and the final price will be observations[254] = 624,
+            // and observations[255] is empty
+            for (let i = 0; i < 255; i++) {
                 roundData.push([parseEther((beginPrice + i).toString()), currentTime, currentTime])
                 bandReference.getReferenceData.returns(() => {
                     return roundData[roundData.length - 1]
@@ -282,6 +285,104 @@ describe.only("BandPriceFeed Spec", () => {
             }
         })
 
-        it("get price", async () => {})
+        it("verify status", async () => {
+            expect(await bandPriceFeed.currentObservationIndex()).to.eq(254)
+
+            // observations[255] shouldn't be updated since we only run 254 times in for loop
+            const observation255 = await bandPriceFeed.observations(255)
+            expect(observation255.price).to.eq(0)
+            expect(observation255.priceCumulative).to.eq(0)
+            expect(observation255.timestamp).to.eq(0)
+
+            const observation254 = await bandPriceFeed.observations(254)
+            expect(observation254.price).to.eq(parseEther("654"))
+            expect(observation254.timestamp).to.eq(currentTimeBefore + 15 * 254)
+
+            // (654 * 15 + 653 * 15 + 652 * 15) / 45 = 653
+            const price = await bandPriceFeed.getPrice(45)
+            expect(price).to.eq(parseEther("653"))
+        })
+
+        it("get price after currentObservationIndex is rotated to 0", async () => {
+            // update 2 more times to rotate currentObservationIndex to 0
+            roundData.push([parseEther((beginPrice + 255).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+
+            // this one will override the first observation which is observations[0]
+            roundData.push([parseEther((beginPrice + 256).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+
+            expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
+
+            // (656 * 15 + 655 * 15 + 654 * 15) / 45 = 655
+            const price = await bandPriceFeed.getPrice(45)
+            expect(price).to.eq(parseEther("655"))
+        })
+
+        it("asking interval is exact the same as max allowable interval", async () => {
+            // update 2 more times to rotate currentObservationIndex to 0
+            roundData.push([parseEther((beginPrice + 255).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+
+            // this one will override the first observation which is observations[0]
+            roundData.push([parseEther((beginPrice + 256).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
+
+            // (((401 + 655) / 2) * 3825 + 656 * 1 ) / 3,826 = 528.0334553058
+            const price = await bandPriceFeed.getPrice(255 * 15 + 1)
+            expect(price).to.eq("528033455305802404600")
+        })
+
+        it("force error, asking interval more than observation has", async () => {
+            // update 2 more times to rotate currentObservationIndex to 0
+            roundData.push([parseEther((beginPrice + 255).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            currentTime += 15
+            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
+            await ethers.provider.send("evm_mine", [])
+
+            // this one will override the first observation which is observations[0]
+            roundData.push([parseEther((beginPrice + 256).toString()), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await bandPriceFeed.update()
+
+            expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
+
+            // the longest interval = 255 * 15 = 3825, it should be revert when interval > 3826
+            // here, we set interval to 3827 because hardhat increases the timestamp by 1 when any tx happens
+            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("BPF_NEH")
+        })
     })
 })
