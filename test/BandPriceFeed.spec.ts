@@ -1,30 +1,31 @@
-import { FakeContract, smock } from "@defi-wonderland/smock"
+import { MockContract, smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { BandPriceFeed, TestStdReference } from "../typechain"
+import { BandPriceFeed, TestStdReference, TestStdReference__factory } from "../typechain"
 
 interface ChainlinkPriceFeedFixture {
     bandPriceFeed: BandPriceFeed
-    bandReference: FakeContract<TestStdReference>
+    bandReference: MockContract<TestStdReference>
     baseAsset: string
 }
 
 async function bandPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
-    const bandReference = await smock.fake<TestStdReference>("TestStdReference")
+    const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference")
+    const testStdReference = await testStdReferenceFactory.deploy()
 
     const baseAsset = "ETH"
     const bandPriceFeedFactory = await ethers.getContractFactory("BandPriceFeed")
-    const bandPriceFeed = (await bandPriceFeedFactory.deploy(bandReference.address, baseAsset)) as BandPriceFeed
+    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset)) as BandPriceFeed
 
-    return { bandPriceFeed, bandReference, baseAsset }
+    return { bandPriceFeed, bandReference: testStdReference, baseAsset }
 }
 
 describe.only("BandPriceFeed Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
-    let bandReference: FakeContract<TestStdReference>
+    let bandReference: MockContract<TestStdReference>
     let currentTime: number
     let roundData: any[]
 
@@ -51,7 +52,7 @@ describe.only("BandPriceFeed Spec", () => {
 
             expect(await bandPriceFeed.update())
                 .to.be.emit(bandPriceFeed, "PriceUpdated")
-                .withArgs("ETH", parseEther("400"), currentTime)
+                .withArgs("ETH", parseEther("400"), currentTime, 0)
 
             const observation = await bandPriceFeed.observations(0)
             const round = roundData[0]
@@ -208,31 +209,30 @@ describe.only("BandPriceFeed Spec", () => {
             })
 
             it("verify cache", async () => {
-                const cachedTimestamp = await bandPriceFeed.latestUpdatedTimestamp()
-                const cachedTwap = await bandPriceFeed.latestUpdated15MinsTwap()
+                const cachedTwap = await bandPriceFeed.cachedTwapMap(900)
 
                 // verify the cache
-                expect(cachedTimestamp).to.eq(currentTime)
+                expect(cachedTwap.timestamp).to.eq(currentTime)
                 // (400 * 15 + 405 * 15 + 410 * 30 ) / 60 = 406.25
-                expect(cachedTwap).to.eq(parseEther("406.25"))
+                expect(cachedTwap.twap).to.eq(parseEther("406.25"))
             })
 
             it("return latest price if interval is zero and cache is not being updated", async () => {
-                const cachedTimestamp = await bandPriceFeed.latestUpdatedTimestamp()
-                const cachedTwap = await bandPriceFeed.latestUpdated15MinsTwap()
+                const cachedTwapBefore = await bandPriceFeed.cachedTwapMap(900)
 
                 const price = await bandPriceFeed.callStatic.cachePrice(0)
                 expect(price).to.eq(parseEther("410"))
                 await bandPriceFeed.cachePrice(0)
 
-                expect(await bandPriceFeed.latestUpdatedTimestamp()).to.eq(cachedTimestamp)
-                expect(await bandPriceFeed.latestUpdated15MinsTwap()).to.eq(cachedTwap)
+                const cacheTwapAfter = await bandPriceFeed.cachedTwapMap(900)
+                expect(cachedTwapBefore.timestamp).to.eq(cacheTwapAfter.timestamp)
+                expect(cachedTwapBefore.twap).to.eq(cacheTwapAfter.twap)
             })
 
+            // TODO
             // hardhat increase timestamp by 1 if any tx happens
             it.skip("return cached twap if timestamp is the same", async () => {
-                const cachedTimestamp = await bandPriceFeed.latestUpdatedTimestamp()
-                const cachedTwap = await bandPriceFeed.latestUpdated15MinsTwap()
+                const cacheTwapBefore = await bandPriceFeed.cachedTwapMap(900)
 
                 const price = await bandPriceFeed.callStatic.cachePrice(900)
                 expect(price).to.eq(parseEther("406.25"))
@@ -240,8 +240,9 @@ describe.only("BandPriceFeed Spec", () => {
                 await bandPriceFeed.cachePrice(900)
 
                 // the cache should not be updated
-                expect(await bandPriceFeed.latestUpdatedTimestamp()).to.eq(cachedTimestamp)
-                expect(await bandPriceFeed.latestUpdated15MinsTwap()).to.eq(cachedTwap)
+                const cacheTwapAfter = await bandPriceFeed.cachedTwapMap(900)
+                expect(cacheTwapAfter.timestamp).to.eq(cacheTwapBefore.timestamp)
+                expect(cacheTwapAfter.twap).to.eq(cacheTwapBefore.twap)
             })
 
             it("return new twap and cache it if timestamp is different", async () => {
@@ -252,8 +253,9 @@ describe.only("BandPriceFeed Spec", () => {
                 await bandPriceFeed.cachePrice(900)
 
                 // (400 * 15 + 405 * 15 + 410 * 45 ) / 75 = 406.25
-                expect(await bandPriceFeed.latestUpdatedTimestamp()).to.eq(currentTime + 1)
-                expect(await bandPriceFeed.latestUpdated15MinsTwap()).to.eq(parseEther("407"))
+                const cachedTwap = await bandPriceFeed.cachedTwapMap(900)
+                expect(cachedTwap.timestamp).to.eq(currentTime + 1)
+                expect(cachedTwap.twap).to.eq(parseEther("407"))
             })
         })
     })

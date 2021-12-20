@@ -1,8 +1,8 @@
+import { FakeContract, smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
+import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { ChainlinkPriceFeed, TestAggregatorV3 } from "../typechain"
-import { parseEther } from "ethers/lib/utils"
-import { FakeContract, smock } from "@defi-wonderland/smock"
 
 interface ChainlinkPriceFeedFixture {
     chainlinkPriceFeed: ChainlinkPriceFeed
@@ -77,7 +77,6 @@ describe("ChainlinkPriceFeed Spec", () => {
             expect(price).to.eq(parseEther("410"))
         })
     })
-
 
     describe("twap", () => {
         beforeEach(async () => {

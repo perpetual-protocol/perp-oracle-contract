@@ -19,6 +19,11 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         uint256 timestamp;
     }
 
+    struct CachedTwap {
+        uint256 timestamp;
+        uint256 twap;
+    }
+
     //
     // EVENT
     //
@@ -38,8 +43,7 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
     IStdReference public stdRef;
     uint8 public currentObservationIndex;
     // cache the lastest twap
-    uint256 public latestUpdatedTimestamp;
-    uint256 public latestUpdated15MinsTwap;
+    mapping(uint256 => CachedTwap) public cachedTwapMap;
 
     //
     // EXTERNAL NON-VIEW
@@ -80,7 +84,8 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
 
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
-        // overflow of currentObservationIndex is desired
+        // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0-255),
+        // so 255 + 1 will be 0
         observations[currentObservationIndex++] = Observation({
             priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
             timestamp: bandData.lastUpdatedBase,
@@ -90,20 +95,24 @@ contract BandPriceFeed is ICachedPriceFeed, BlockContext {
         emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex - 1);
     }
 
+    // TODO: naming cachePriceAndGetPrice?
     function cachePrice(uint256 interval) external override returns (uint256) {
-        uint256 currentTimestamp = _blockTimestamp();
-        // the cache only works for 15 mins twap
-        if (interval == 900) {
-            if (currentTimestamp == latestUpdatedTimestamp) {
-                return latestUpdated15MinsTwap;
-            }
-
-            // update cache
-            latestUpdated15MinsTwap = getPrice(interval);
-            latestUpdatedTimestamp = currentTimestamp;
-            return latestUpdated15MinsTwap;
+        if (interval == 0) {
+            return getPrice(interval);
         }
-        return getPrice(interval);
+
+        uint256 currentTimestamp = _blockTimestamp();
+
+        CachedTwap storage cachedTwapStorage = cachedTwapMap[interval];
+        if (cachedTwapStorage.timestamp == currentTimestamp) {
+            return cachedTwapStorage.twap;
+        }
+
+        // update cache
+        cachedTwapStorage.timestamp = currentTimestamp;
+        cachedTwapStorage.twap = getPrice(interval);
+
+        return cachedTwapStorage.twap;
     }
 
     //
