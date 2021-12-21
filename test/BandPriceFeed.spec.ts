@@ -172,67 +172,6 @@ describe("BandPriceFeed Spec", () => {
                 expect(price).to.eq(parseEther("410"))
             })
         })
-
-        // describe("cachePrice", () => {
-        //     beforeEach(async () => {
-        //         currentTime += 14
-        //         await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
-        //         await ethers.provider.send("evm_mine", [])
-        //         // cache the twap first
-        //         await bandPriceFeed.cachePrice(900)
-        //         currentTime = (await waffle.provider.getBlock("latest")).timestamp
-        //     })
-
-        //     it("verify cache", async () => {
-        //         const cachedTwap = await bandPriceFeed.cachedTwapMap(900)
-
-        //         // verify the cache
-        //         expect(cachedTwap.timestamp).to.eq(currentTime)
-        //         // (400 * 15 + 405 * 15 + 410 * 30 ) / 60 = 406.25
-        //         expect(cachedTwap.twap).to.eq(parseEther("406.25"))
-        //     })
-
-        //     it("return latest price if interval is zero and cache is not being updated", async () => {
-        //         const cachedTwapBefore = await bandPriceFeed.cachedTwapMap(900)
-
-        //         const price = await bandPriceFeed.callStatic.cachePrice(0)
-        //         expect(price).to.eq(parseEther("410"))
-        //         await bandPriceFeed.cachePrice(0)
-
-        //         const cacheTwapAfter = await bandPriceFeed.cachedTwapMap(900)
-        //         expect(cachedTwapBefore.timestamp).to.eq(cacheTwapAfter.timestamp)
-        //         expect(cachedTwapBefore.twap).to.eq(cacheTwapAfter.twap)
-        //     })
-
-        //     // TODO
-        //     // hardhat increase timestamp by 1 if any tx happens
-        //     it.skip("return cached twap if timestamp is the same", async () => {
-        //         const cacheTwapBefore = await bandPriceFeed.cachedTwapMap(900)
-
-        //         const price = await bandPriceFeed.callStatic.cachePrice(900)
-        //         expect(price).to.eq(parseEther("406.25"))
-
-        //         await bandPriceFeed.cachePrice(900)
-
-        //         // the cache should not be updated
-        //         const cacheTwapAfter = await bandPriceFeed.cachedTwapMap(900)
-        //         expect(cacheTwapAfter.timestamp).to.eq(cacheTwapBefore.timestamp)
-        //         expect(cacheTwapAfter.twap).to.eq(cacheTwapBefore.twap)
-        //     })
-
-        //     it("return new twap and cache it if timestamp is different", async () => {
-        //         currentTime += 14
-        //         await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
-        //         await ethers.provider.send("evm_mine", [])
-
-        //         await bandPriceFeed.cachePrice(900)
-
-        //         // (400 * 15 + 405 * 15 + 410 * 45 ) / 75 = 406.25
-        //         const cachedTwap = await bandPriceFeed.cachedTwapMap(900)
-        //         expect(cachedTwap.timestamp).to.eq(currentTime + 1)
-        //         expect(cachedTwap.twap).to.eq(parseEther("407"))
-        //     })
-        // })
     })
 
     describe("circular observations", () => {

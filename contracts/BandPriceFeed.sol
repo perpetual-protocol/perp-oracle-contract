@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-// import { ICachedPriceFeed } from "./interface/ICachedPriceFeed.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
 
@@ -19,11 +18,6 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         uint256 priceCumulative;
         uint256 timestamp;
     }
-
-    // struct CachedTwap {
-    //     uint256 timestamp;
-    //     uint256 twap;
-    // }
 
     //
     // EVENT
@@ -43,9 +37,6 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
 
     IStdReference public stdRef;
     uint8 public currentObservationIndex;
-
-    // cache the lastest twap
-    // mapping(uint256 => CachedTwap) public cachedTwapMap;
 
     //
     // EXTERNAL NON-VIEW
@@ -97,26 +88,6 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
 
         emit PriceUpdated(baseAsset, bandData.rate, bandData.lastUpdatedBase, currentObservationIndex);
     }
-
-    // TODO: should ChainlinkPriceFeed also have this?
-    // function cachePrice(uint256 interval) external override returns (uint256) {
-    //     if (interval == 0) {
-    //         return getPrice(interval);
-    //     }
-
-    //     uint256 currentTimestamp = _blockTimestamp();
-
-    //     CachedTwap storage cachedTwapStorage = cachedTwapMap[interval];
-    //     if (cachedTwapStorage.timestamp == currentTimestamp) {
-    //         return cachedTwapStorage.twap;
-    //     }
-
-    //     // update cache
-    //     cachedTwapStorage.timestamp = currentTimestamp;
-    //     cachedTwapStorage.twap = getPrice(interval);
-
-    //     return cachedTwapStorage.twap;
-    // }
 
     //
     // EXTERNAL VIEW
