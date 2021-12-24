@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.2.1] - 2021-12-24
+
+- Fix `BandPriceFeed` when the price feed haven't updated.
+
 ## [0.2.0] - 2021-12-21
 
-- Add `BandPriceFeed`
+- Add `BandPriceFeed`.
