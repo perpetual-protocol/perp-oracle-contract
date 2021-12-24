@@ -94,14 +94,16 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
     //
 
     function getPrice(uint256 interval) public view override returns (uint256) {
+        Observation memory lastestObservation = observations[currentObservationIndex];
+        if (lastestObservation.price == 0) {
+            // BPF_ND: no data
+            revert("BPF_ND");
+        }
+
         IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
         if (interval == 0) {
             return latestBandData.rate;
         }
-
-        Observation memory lastestObservation = observations[currentObservationIndex];
-        // BPF_ND: no data
-        require(lastestObservation.price != 0, "BPF_ND");
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp - interval;
