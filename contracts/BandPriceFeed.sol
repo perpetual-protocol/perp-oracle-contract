@@ -99,11 +99,13 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             return latestBandData.rate;
         }
 
+        Observation memory lastestObservation = observations[currentObservationIndex];
+        // BPF_ND: no data
+        require(lastestObservation.price != 0, "BPF_ND");
+
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp - interval;
         (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
-
-        Observation memory lastestObservation = observations[currentObservationIndex];
         uint256 currentPriceCumulative =
             lastestObservation.priceCumulative +
                 (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
