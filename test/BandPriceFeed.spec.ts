@@ -260,4 +260,23 @@ describe("BandPriceFeed Spec", () => {
             await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("BPF_NEH")
         })
     })
+
+    describe("price is never updated", () => {
+        beforeEach(async () => {
+            currentTime = (await waffle.provider.getBlock("latest")).timestamp
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+        })
+
+        it("get spot price", async () => {
+            const price = await bandPriceFeed.getPrice(0)
+            expect(price).to.eq(parseEther("400"))
+        })
+
+        it("force error, get twap price", async () => {
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
+        })
+    })
 })
