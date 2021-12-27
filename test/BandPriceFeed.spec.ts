@@ -207,11 +207,11 @@ describe("BandPriceFeed Spec", () => {
         })
 
         it("get price after currentObservationIndex is rotated to 0", async () => {
-            // update 2 more times to rotate currentObservationIndex to 0
-            // currentObservationIndex = 255
+            // increase currentObservationIndex to 255
             await updatePrice(beginPrice + 255)
-            // this one will override the first observation which is observations[0]
-            // currentObservationIndex = 0
+
+            // increase (rotate) currentObservationIndex to 0
+            // which will override the first observation which is observations[0]
             await updatePrice(beginPrice + 256)
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
