@@ -52,13 +52,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
 
     /// @dev anyone can help update it.
     function update() external {
-        IStdReference.ReferenceData memory bandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
-        // BPF_TQZ: timestamp for quote is zero
-        require(bandData.lastUpdatedQuote > 0, "BPF_TQZ");
-        // BPF_TBZ: timestamp for base is zero
-        require(bandData.lastUpdatedBase > 0, "BPF_TBZ");
-        // BPF_IP: invalid price
-        require(bandData.rate > 0, "BPF_IP");
+        IStdReference.ReferenceData memory bandData = getReferenceData();
 
         // for the first time update
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
@@ -71,13 +65,13 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
             return;
         }
 
+        // BPF_IT: invalid timestamp
+        Observation memory lastObservation = observations[currentObservationIndex];
+        require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
+
         // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0
         currentObservationIndex++;
-
-        // BPF_IT: invalid timestamp
-        Observation memory lastObservation = observations[currentObservationIndex - 1];
-        require(bandData.lastUpdatedBase > lastObservation.timestamp, "BPF_IT");
 
         uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
         observations[currentObservationIndex] = Observation({
@@ -94,14 +88,16 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
     //
 
     function getPrice(uint256 interval) public view override returns (uint256) {
-        IStdReference.ReferenceData memory latestBandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
+        Observation memory lastestObservation = observations[currentObservationIndex];
+        if (lastestObservation.price == 0) {
+            // BPF_ND: no data
+            revert("BPF_ND");
+        }
+
+        IStdReference.ReferenceData memory latestBandData = getReferenceData();
         if (interval == 0) {
             return latestBandData.rate;
         }
-
-        Observation memory lastestObservation = observations[currentObservationIndex];
-        // BPF_ND: no data
-        require(lastestObservation.price != 0, "BPF_ND");
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp - interval;
@@ -148,12 +144,26 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
     //
 
     function decimals() external pure override returns (uint8) {
+        // We assume Band Protocol always has 18 decimals
+        // https://docs.bandchain.org/band-standard-dataset/using-band-dataset/using-band-dataset-evm.html
         return 18;
     }
 
     //
     // INTERNAL VIEW
     //
+
+    function getReferenceData() internal view returns (IStdReference.ReferenceData memory) {
+        IStdReference.ReferenceData memory bandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
+        // BPF_TQZ: timestamp for quote is zero
+        require(bandData.lastUpdatedQuote > 0, "BPF_TQZ");
+        // BPF_TBZ: timestamp for base is zero
+        require(bandData.lastUpdatedBase > 0, "BPF_TBZ");
+        // BPF_IP: invalid price
+        require(bandData.rate > 0, "BPF_IP");
+
+        return bandData;
+    }
 
     function getSurroundingObservations(uint256 targetTimestamp)
         internal

@@ -191,7 +191,7 @@ describe("BandPriceFeed Spec", () => {
         it("verify status", async () => {
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(254)
 
-            // observations[255] shouldn't be updated since we only run 254 times in for loop
+            // observations[255] shouldn't be updated since we only run 255 times in for loop
             const observation255 = await bandPriceFeed.observations(255)
             expect(observation255.price).to.eq(0)
             expect(observation255.priceCumulative).to.eq(0)
@@ -207,9 +207,11 @@ describe("BandPriceFeed Spec", () => {
         })
 
         it("get price after currentObservationIndex is rotated to 0", async () => {
-            // update 2 more times to rotate currentObservationIndex to 0
+            // increase currentObservationIndex to 255
             await updatePrice(beginPrice + 255)
-            // this one will override the first observation which is observations[0]
+
+            // increase (rotate) currentObservationIndex to 0
+            // which will override the first observation which is observations[0]
             await updatePrice(beginPrice + 256)
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
@@ -261,18 +263,9 @@ describe("BandPriceFeed Spec", () => {
         })
     })
 
-    describe("price is never updated", () => {
-        beforeEach(async () => {
-            currentTime = (await waffle.provider.getBlock("latest")).timestamp
-            roundData.push([parseEther("400"), currentTime, currentTime])
-            bandReference.getReferenceData.returns(() => {
-                return roundData[roundData.length - 1]
-            })
-        })
-
+    describe("price is not updated yet", () => {
         it("get spot price", async () => {
-            const price = await bandPriceFeed.getPrice(0)
-            expect(price).to.eq(parseEther("400"))
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
         })
 
         it("force error, get twap price", async () => {
