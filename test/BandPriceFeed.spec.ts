@@ -4,13 +4,13 @@ import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { BandPriceFeed, TestStdReference, TestStdReference__factory } from "../typechain"
 
-interface ChainlinkPriceFeedFixture {
+interface BandPriceFeedFixture {
     bandPriceFeed: BandPriceFeed
     bandReference: MockContract<TestStdReference>
     baseAsset: string
 }
 
-async function bandPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
+async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
     const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference")
     const testStdReference = await testStdReferenceFactory.deploy()
 
