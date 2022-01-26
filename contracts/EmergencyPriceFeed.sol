@@ -34,9 +34,9 @@ contract EmergencyPriceFeed is IPriceFeed, BlockContext {
     // EXTERNAL VIEW
     //
 
-    function getPrice(uint256 interval) public view override returns (uint256) {
-        uint256 markTwapX96 = formatSqrtPriceX96ToPriceX96(getSqrtMarkTwapX96(toUint32(interval)));
-        return formatX96ToX10_18(markTwapX96);
+    function getPrice(uint256 interval) external view override returns (uint256) {
+        uint256 markTwapX96 = _formatSqrtPriceX96ToPriceX96(_getSqrtMarkTwapX96(_toUint32(interval)));
+        return _formatX96ToX10_18(markTwapX96);
     }
 
     //
@@ -49,7 +49,7 @@ contract EmergencyPriceFeed is IPriceFeed, BlockContext {
 
     /// @dev if twapInterval < 10 (should be less than 1 block), return mark price without twap directly,
     ///      as twapInterval is too short and makes getting twap over such a short period meaningless
-    function getSqrtMarkTwapX96(uint32 twapInterval) internal view returns (uint160) {
+    function _getSqrtMarkTwapX96(uint32 twapInterval) internal view returns (uint160) {
         // return the current price as twapInterval is too short/ meaningless
         if (twapInterval < 10) {
             (uint160 sqrtMarkPrice, , , , , , ) = IUniswapV3Pool(pool).slot0();
@@ -76,15 +76,15 @@ contract EmergencyPriceFeed is IPriceFeed, BlockContext {
      *
      * - input must fit into 32 bits
      */
-    function toUint32(uint256 value) internal pure returns (uint32 returnValue) {
+    function _toUint32(uint256 value) internal pure returns (uint32 returnValue) {
         require(((returnValue = uint32(value)) == value), "SafeCast: value doesn't fit in 32 bits");
     }
 
-    function formatSqrtPriceX96ToPriceX96(uint160 sqrtPriceX96) internal pure returns (uint256) {
+    function _formatSqrtPriceX96ToPriceX96(uint160 sqrtPriceX96) internal pure returns (uint256) {
         return FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, FixedPoint96.Q96);
     }
 
-    function formatX96ToX10_18(uint256 valueX96) internal pure returns (uint256) {
+    function _formatX96ToX10_18(uint256 valueX96) internal pure returns (uint256) {
         return FullMath.mulDiv(valueX96, 1e18, FixedPoint96.Q96);
     }
 }
