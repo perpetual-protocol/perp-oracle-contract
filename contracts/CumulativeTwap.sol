@@ -36,9 +36,11 @@ contract CumulativeTwap is BlockContext {
             return;
         }
 
-        // BPF_IT: invalid timestamp
+        // CT_IT: invalid timestamp
+        // add `==` in the require statement in case that two or more price with the same timestamp
+        // this might happen on Optimism bcs their timestamp is not up-to-date
         Observation memory lastObservation = observations[currentObservationIndex];
-        require(lastUpdatedTimestamp > lastObservation.timestamp, "BPF_IT");
+        require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
 
         // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0
@@ -61,14 +63,9 @@ contract CumulativeTwap is BlockContext {
     ) internal view returns (uint256) {
         Observation memory lastestObservation = observations[currentObservationIndex];
         if (lastestObservation.price == 0) {
-            // BPF_ND: no data
-            revert("BPF_ND");
+            // CT_ND: no data
+            revert("CT_ND");
         }
-
-        // IStdReference.ReferenceData memory latestBandData = getReferenceData();
-        // if (interval == 0) {
-        //     return latestPrice;
-        // }
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp - interval;
@@ -139,8 +136,8 @@ contract CumulativeTwap is BlockContext {
 
         // not enough historical data to query
         if (i == observationLen) {
-            // BPF_NEH: no enough historical data
-            revert("BPF_NEH");
+            // CT_NEH: no enough historical data
+            revert("CT_NEH");
         }
 
         beforeOrAt = observations[beforeOrAtIndex];

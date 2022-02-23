@@ -21,7 +21,7 @@ async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
     return { bandPriceFeed, bandReference: testStdReference, baseAsset }
 }
 
-describe("BandPriceFeed Spec", () => {
+describe("BandPriceFeed/CumulativeTwap Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
@@ -88,14 +88,15 @@ describe("BandPriceFeed Spec", () => {
             expect(observation.priceCumulative).to.eq(parseEther("6000"))
         })
 
-        it("force error, the second update is the same timestamp", async () => {
+        // skip this test for being compatible with Chainlink aggregator
+        it.skip("force error, the second update is the same timestamp", async () => {
             await updatePrice(400, false)
 
             roundData.push([parseEther("440"), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_IT")
+            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IT")
         })
     })
 
@@ -259,17 +260,23 @@ describe("BandPriceFeed Spec", () => {
 
             // the longest interval = 255 * 15 = 3825, it should be revert when interval > 3826
             // here, we set interval to 3827 because hardhat increases the timestamp by 1 when any tx happens
-            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("BPF_NEH")
+            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("CT_NEH")
         })
     })
 
     describe("price is not updated yet", () => {
+        beforeEach(async () => {
+            roundData.push([parseEther("100"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+        })
         it("get spot price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
         })
 
         it("force error, get twap price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
         })
     })
 })
