@@ -63,7 +63,7 @@ describe("BandPriceFeed Spec", () => {
 
             expect(await bandPriceFeed.update())
                 .to.be.emit(bandPriceFeed, "PriceUpdated")
-                .withArgs("ETH", parseEther("400"), currentTime, 0)
+                .withArgs(parseEther("400"), currentTime, 0)
 
             const observation = await bandPriceFeed.observations(0)
             const round = roundData[0]
