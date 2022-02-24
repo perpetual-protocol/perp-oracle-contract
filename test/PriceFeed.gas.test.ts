@@ -2,6 +2,7 @@ import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { BandPriceFeed, ChainlinkPriceFeed, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
 
+const twapInterval = 900
 interface PriceFeedFixture {
     bandPriceFeed: BandPriceFeed
     bandReference: TestStdReference
@@ -19,14 +20,21 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
 
     const baseAsset = "ETH"
     const bandPriceFeedFactory = await ethers.getContractFactory("BandPriceFeed")
-    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset)) as BandPriceFeed
+    const bandPriceFeed = (await bandPriceFeedFactory.deploy(
+        testStdReference.address,
+        baseAsset,
+        twapInterval,
+    )) as BandPriceFeed
 
     // chainlink
     const testAggregatorFactory = await ethers.getContractFactory("TestAggregatorV3")
     const testAggregator = await testAggregatorFactory.deploy()
 
     const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeed")
-    const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(testAggregator.address)) as ChainlinkPriceFeed
+    const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(
+        testAggregator.address,
+        twapInterval,
+    )) as ChainlinkPriceFeed
 
     return { bandPriceFeed, bandReference: testStdReference, baseAsset, chainlinkPriceFeed, aggregator: testAggregator }
 }
@@ -52,6 +60,7 @@ describe.skip("Price feed gas test", () => {
         await bandPriceFeed.update()
 
         await aggregator.setRoundData(round, parseEther(price.toString()), currentTime, currentTime, round)
+        await chainlinkPriceFeed.update()
 
         if (forward) {
             currentTime += 15
@@ -75,39 +84,27 @@ describe.skip("Price feed gas test", () => {
         )) as TestPriceFeed
 
         currentTime = (await waffle.provider.getBlock("latest")).timestamp
-        for (let i = 1; i < 255; i++) {
+        for (let i = 0; i < 255; i++) {
             round = i
             await updatePrice(beginPrice + i)
         }
     })
 
-    describe("2 loops", () => {
+    describe("900 seconds twapInterval", () => {
         it("band protocol ", async () => {
-            await testPriceFeed.fetchBandProtocolPrice(15 * 2)
+            await testPriceFeed.fetchBandProtocolPrice(twapInterval)
+        })
+
+        it("band protocol - cached", async () => {
+            await testPriceFeed.cachedBandProtocolPrice(twapInterval)
         })
 
         it("chainlink", async () => {
-            await testPriceFeed.fetchChainlinkPrice(15 * 2)
-        })
-    })
-
-    describe("100 loops", () => {
-        it("band protocol ", async () => {
-            await testPriceFeed.fetchBandProtocolPrice(15 * 100)
+            await testPriceFeed.fetchChainlinkPrice(twapInterval)
         })
 
-        it("chainlink", async () => {
-            await testPriceFeed.fetchChainlinkPrice(15 * 100)
-        })
-    })
-
-    describe("200 loops", () => {
-        it("band protocol ", async () => {
-            await testPriceFeed.fetchBandProtocolPrice(15 * 200)
-        })
-
-        it("chainlink", async () => {
-            await testPriceFeed.fetchChainlinkPrice(15 * 200)
+        it("chainlink - cached", async () => {
+            await testPriceFeed.cachedChainlinkPrice(twapInterval)
         })
     })
 })
