@@ -6,9 +6,9 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
-import { CumulativeTwap } from "./CumulativeTwap.sol";
+import { Cached15MinTwap } from "./twap/Cached15MinTwap.sol";
 
-contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
+contract BandPriceFeed is IPriceFeed, BlockContext, Cached15MinTwap {
     using Address for address;
 
     //

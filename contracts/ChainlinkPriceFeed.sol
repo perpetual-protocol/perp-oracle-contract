@@ -5,9 +5,10 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { CumulativeTwap } from "./CumulativeTwap.sol";
+import { Cached15MinTwap } from "./twap/Cached15MinTwap.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
+contract ChainlinkPriceFeed is IPriceFeed, BlockContext, Cached15MinTwap {
+    using SafeMath for uint256;
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;
