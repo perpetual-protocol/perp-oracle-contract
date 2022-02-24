@@ -9,6 +9,10 @@ contract TestStdReference is IStdReference {
 
     constructor() {}
 
+    function setReferenceData(ReferenceData memory _refData) public {
+        refData = _refData;
+    }
+
     function getReferenceData(string memory _base, string memory _quote)
         external
         view
