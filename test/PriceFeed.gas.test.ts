@@ -31,7 +31,7 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
     return { bandPriceFeed, bandReference: testStdReference, baseAsset, chainlinkPriceFeed, aggregator: testAggregator }
 }
 
-describe.only("Price feed gas test", () => {
+describe("Price feed gas test", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
