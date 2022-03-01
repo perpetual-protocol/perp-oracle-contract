@@ -33,7 +33,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
 
     /// @dev anyone can help update it.
     function update() external {
-        IStdReference.ReferenceData memory bandData = getReferenceData();
+        IStdReference.ReferenceData memory bandData = _getReferenceData();
 
         _update(bandData.rate, bandData.lastUpdatedBase);
     }
@@ -43,7 +43,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
     //
 
     function getPrice(uint256 interval) public view override returns (uint256) {
-        IStdReference.ReferenceData memory latestBandData = getReferenceData();
+        IStdReference.ReferenceData memory latestBandData = _getReferenceData();
         if (interval == 0) {
             return latestBandData.rate;
         }
@@ -64,7 +64,7 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
     // INTERNAL VIEW
     //
 
-    function getReferenceData() internal view returns (IStdReference.ReferenceData memory) {
+    function _getReferenceData() internal view returns (IStdReference.ReferenceData memory) {
         IStdReference.ReferenceData memory bandData = stdRef.getReferenceData(baseAsset, QUOTE_ASSET);
         // BPF_TQZ: timestamp for quote is zero
         require(bandData.lastUpdatedQuote > 0, "BPF_TQZ");

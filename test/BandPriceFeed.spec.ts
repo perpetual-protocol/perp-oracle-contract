@@ -89,6 +89,7 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
         })
 
         // skip this test for being compatible with Chainlink aggregator
+        // Chainlink aggregator might have the same timestamp in different round
         it.skip("force error, the second update is the same timestamp", async () => {
             await updatePrice(400, false)
 

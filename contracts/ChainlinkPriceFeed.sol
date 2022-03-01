@@ -2,14 +2,12 @@
 pragma solidity 0.7.6;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CumulativeTwap } from "./CumulativeTwap.sol";
 
 contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
-    using SafeMath for uint256;
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;

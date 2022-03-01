@@ -3,8 +3,11 @@ pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
 import { BlockContext } from "./base/BlockContext.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract CumulativeTwap is BlockContext {
+    using SafeMath for uint256;
+
     //
     // STRUCT
     //
@@ -68,12 +71,14 @@ contract CumulativeTwap is BlockContext {
         }
 
         uint256 currentTimestamp = _blockTimestamp();
-        uint256 targetTimestamp = currentTimestamp - interval;
+        uint256 targetTimestamp = currentTimestamp.sub(interval);
         (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
-        uint256 currentPriceCumulative =
-            lastestObservation.priceCumulative +
-                (lastestObservation.price * (latestUpdatedTimestamp - lastestObservation.timestamp)) +
-                (latestPrice * (currentTimestamp - latestUpdatedTimestamp));
+        uint256 currentCumulativePrice =
+            lastestObservation.priceCumulative.add(
+                (lastestObservation.price.mul(latestUpdatedTimestamp.sub(lastestObservation.timestamp))).add(
+                    latestPrice.mul(currentTimestamp.sub(latestUpdatedTimestamp))
+                )
+            );
 
         //
         //                   beforeOrAt                    atOrAfter
@@ -83,28 +88,29 @@ contract CumulativeTwap is BlockContext {
         // case 2                               |              targetTimestamp
         // case 3                          targetTimestamp
         //
-        uint256 targetPriceCumulative;
+        uint256 targetCumulativePrice;
         // case1. not enough historical data or just enough (`==` case)
         if (targetTimestamp <= beforeOrAt.timestamp) {
             targetTimestamp = beforeOrAt.timestamp;
-            targetPriceCumulative = beforeOrAt.priceCumulative;
+            targetCumulativePrice = beforeOrAt.priceCumulative;
         }
         // case2. the latest data is older than or equal the request
         else if (atOrAfter.timestamp <= targetTimestamp) {
             targetTimestamp = atOrAfter.timestamp;
-            targetPriceCumulative = atOrAfter.priceCumulative;
+            targetCumulativePrice = atOrAfter.priceCumulative;
         }
         // case3. in the middle
         else {
             uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
             uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
-            targetPriceCumulative =
-                beforeOrAt.priceCumulative +
-                ((atOrAfter.priceCumulative - beforeOrAt.priceCumulative) * targetTimeDelta) /
-                observationTimeDelta;
+            targetCumulativePrice = beforeOrAt.priceCumulative.add(
+                ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
+                    observationTimeDelta
+                )
+            );
         }
 
-        return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
+        return currentCumulativePrice.sub(targetCumulativePrice).div(currentTimestamp - targetTimestamp);
     }
 
     function _getSurroundingObservations(uint256 targetTimestamp)
