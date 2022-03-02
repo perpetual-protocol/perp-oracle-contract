@@ -43,7 +43,7 @@ contract BandPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
     }
 
     function cacheTwap(uint256 interval) external override returns (uint256) {
-        IStdReference.ReferenceData memory latestBandData = getReferenceData();
+        IStdReference.ReferenceData memory latestBandData = _getReferenceData();
         if (interval == 0) {
             return latestBandData.rate;
         }

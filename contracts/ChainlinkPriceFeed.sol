@@ -9,7 +9,6 @@ import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
 contract ChainlinkPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
-    using SafeMath for uint256;
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;

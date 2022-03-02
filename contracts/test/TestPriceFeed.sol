@@ -16,6 +16,9 @@ contract TestPriceFeed {
         currentPrice = 10;
     }
 
+    //
+    // for gas usage testing
+    //
     function fetchChainlinkPrice(uint256 interval) external {
         for (uint256 i = 0; i < 17; i++) {
             IPriceFeed(chainlink).getPrice(interval);
@@ -42,5 +45,16 @@ contract TestPriceFeed {
             ICachedTwap(bandProtocol).cacheTwap(interval);
         }
         currentPrice = ICachedTwap(bandProtocol).cacheTwap(interval);
+    }
+
+    //
+    // for cached twap testing
+    //
+
+    // having this function for testing getPrice() and cacheTwap()
+    // timestamp moves if any txs happen in hardhat env and which causes cacheTwap() will recalculate all the time
+    function getPrice(uint256 interval) external returns (uint256 twap, uint256 cachedTwap) {
+        twap = IPriceFeed(bandProtocol).getPrice(interval);
+        cachedTwap = ICachedTwap(bandProtocol).cacheTwap(interval);
     }
 }
