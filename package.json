@@ -1,6 +1,6 @@
 {
   "name": "@perp/perp-oracle-contract",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "",
   "main": "hardhat.config.js",
   "files": [

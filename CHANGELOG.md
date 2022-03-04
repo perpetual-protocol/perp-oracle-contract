@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.3.2] - 2022-03-04
+
+- using cumulative twap in Chainlink price feed
+
 ## [0.3.0] - 2022-02-07
 
 - Add `EmergencyPriceFeed`.
