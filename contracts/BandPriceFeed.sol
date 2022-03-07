@@ -5,10 +5,11 @@ pragma experimental ABIEncoderV2;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { ICachedTwap } from "./interface/ICachedTwap.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
-import { CumulativeTwap } from "./CumulativeTwap.sol";
+import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
+contract BandPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
     using Address for address;
 
     //
@@ -23,7 +24,11 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
     // EXTERNAL NON-VIEW
     //
 
-    constructor(IStdReference stdRefArg, string memory baseAssetArg) {
+    constructor(
+        IStdReference stdRefArg,
+        string memory baseAssetArg,
+        uint80 cacheTwapInterval
+    ) CachedTwap(cacheTwapInterval) {
         // BPF_ANC: Reference address is not contract
         require(address(stdRefArg).isContract(), "BPF_ANC");
 
@@ -34,8 +39,15 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
     /// @dev anyone can help update it.
     function update() external {
         IStdReference.ReferenceData memory bandData = _getReferenceData();
-
         _update(bandData.rate, bandData.lastUpdatedBase);
+    }
+
+    function cacheTwap(uint256 interval) external override returns (uint256) {
+        IStdReference.ReferenceData memory latestBandData = _getReferenceData();
+        if (interval == 0) {
+            return latestBandData.rate;
+        }
+        return _cacheTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
     }
 
     //

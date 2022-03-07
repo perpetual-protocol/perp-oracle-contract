@@ -4,15 +4,16 @@ pragma solidity 0.7.6;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { ICachedTwap } from "./interface/ICachedTwap.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { CumulativeTwap } from "./CumulativeTwap.sol";
+import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
+contract ChainlinkPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;
 
-    constructor(AggregatorV3Interface aggregator) {
+    constructor(AggregatorV3Interface aggregator, uint80 cacheTwapInterval) CachedTwap(cacheTwapInterval) {
         // CPF_ANC: Aggregator address is not contract
         require(address(aggregator).isContract(), "CPF_ANC");
 
@@ -24,6 +25,15 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CumulativeTwap {
         (, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData();
 
         _update(latestPrice, latestTimestamp);
+    }
+
+    function cacheTwap(uint256 interval) external override returns (uint256) {
+        (uint80 round, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData();
+
+        if (interval == 0 || round == 0) {
+            return latestPrice;
+        }
+        return _cacheTwap(interval, latestPrice, latestTimestamp);
     }
 
     function decimals() external view override returns (uint8) {

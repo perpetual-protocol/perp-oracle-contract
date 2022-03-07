@@ -16,7 +16,7 @@ async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
 
     const baseAsset = "ETH"
     const bandPriceFeedFactory = await ethers.getContractFactory("BandPriceFeed")
-    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset)) as BandPriceFeed
+    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset, 900)) as BandPriceFeed
 
     return { bandPriceFeed, bandReference: testStdReference, baseAsset }
 }

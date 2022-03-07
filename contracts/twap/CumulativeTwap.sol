@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 pragma experimental ABIEncoderV2;
 
-import { BlockContext } from "./base/BlockContext.sol";
+import { BlockContext } from "../base/BlockContext.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract CumulativeTwap is BlockContext {

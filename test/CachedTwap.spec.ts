@@ -1,8 +1,8 @@
+import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { BandPriceFeed, ChainlinkPriceFeed, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
 
-const twapInterval = 900
 interface PriceFeedFixture {
     bandPriceFeed: BandPriceFeed
     bandReference: TestStdReference
@@ -12,8 +12,8 @@ interface PriceFeedFixture {
     chainlinkPriceFeed: ChainlinkPriceFeed
     aggregator: TestAggregatorV3
 }
-
 async function priceFeedFixture(): Promise<PriceFeedFixture> {
+    const twapInterval = 45
     // band protocol
     const testStdReferenceFactory = await ethers.getContractFactory("TestStdReference")
     const testStdReference = await testStdReferenceFactory.deploy()
@@ -39,7 +39,7 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
     return { bandPriceFeed, bandReference: testStdReference, baseAsset, chainlinkPriceFeed, aggregator: testAggregator }
 }
 
-describe.skip("Price feed gas test", () => {
+describe("Cached Twap Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
@@ -48,7 +48,6 @@ describe.skip("Price feed gas test", () => {
     let aggregator: TestAggregatorV3
     let currentTime: number
     let testPriceFeed: TestPriceFeed
-    let beginPrice = 400
     let round: number
 
     async function updatePrice(price: number, forward: boolean = true): Promise<void> {
@@ -84,27 +83,39 @@ describe.skip("Price feed gas test", () => {
         )) as TestPriceFeed
 
         currentTime = (await waffle.provider.getBlock("latest")).timestamp
-        for (let i = 0; i < 255; i++) {
-            round = i
-            await updatePrice(beginPrice + i)
-        }
+        await updatePrice(400)
+        await updatePrice(405)
+        await updatePrice(410)
     })
 
-    describe("900 seconds twapInterval", () => {
-        it("band protocol ", async () => {
-            await testPriceFeed.fetchBandProtocolPrice(twapInterval)
+    describe("cacheTwap should be exactly the same getPrice()", () => {
+        it("return latest price if interval is zero", async () => {
+            const price = await testPriceFeed.callStatic.getPrice(0)
+            expect(price.twap).to.eq(price.cachedTwap)
+            expect(price.twap).to.eq(await bandPriceFeed.getPrice(0))
         })
 
-        it("band protocol - cached", async () => {
-            await testPriceFeed.cachedBandProtocolPrice(twapInterval)
+        it("if cached twap found, twap price should equal cached twap", async () => {
+            const price = await testPriceFeed.callStatic.getPrice(45)
+            expect(price.twap).to.eq(price.cachedTwap)
+            expect(price.twap).to.eq(await bandPriceFeed.getPrice(45))
         })
 
-        it("chainlink", async () => {
-            await testPriceFeed.fetchChainlinkPrice(twapInterval)
+        it("if no cached twap found, twap price should equal cached twap", async () => {
+            const price = await testPriceFeed.callStatic.getPrice(46)
+            expect(price.twap).to.eq(price.cachedTwap)
+            expect(price.twap).to.eq(await bandPriceFeed.getPrice(46))
         })
 
-        it("chainlink - cached", async () => {
-            await testPriceFeed.cachedChainlinkPrice(twapInterval)
+        it("re-calculate cached twap if timestamp moves", async () => {
+            const price1 = await testPriceFeed.callStatic.getPrice(45)
+            await testPriceFeed.getPrice(45)
+
+            const price2 = await testPriceFeed.callStatic.getPrice(45)
+            expect(price2.twap).to.eq(price2.cachedTwap)
+            expect(price2.twap).to.eq(await bandPriceFeed.getPrice(45))
+
+            expect(price1.cachedTwap).to.not.eq(price2.cachedTwap)
         })
     })
 })
