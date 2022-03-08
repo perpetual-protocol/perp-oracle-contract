@@ -49,9 +49,9 @@ contract CumulativeTwap is BlockContext {
         // so 255 + 1 will be 0
         currentObservationIndex++;
 
-        uint256 elapsedTime = lastUpdatedTimestamp - lastObservation.timestamp;
+        uint256 elapsedTime = lastUpdatedTimestamp.sub(lastObservation.timestamp);
         observations[currentObservationIndex] = Observation({
-            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
+            priceCumulative: lastObservation.priceCumulative.add(lastObservation.price.mul(elapsedTime)),
             timestamp: lastUpdatedTimestamp,
             price: price
         });
@@ -101,8 +101,8 @@ contract CumulativeTwap is BlockContext {
         }
         // case3. in the middle
         else {
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+            uint256 observationTimeDelta = atOrAfter.timestamp.sub(beforeOrAt.timestamp);
+            uint256 targetTimeDelta = targetTimestamp.sub(beforeOrAt.timestamp);
             targetCumulativePrice = beforeOrAt.priceCumulative.add(
                 ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
                     observationTimeDelta
