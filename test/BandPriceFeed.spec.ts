@@ -16,12 +16,12 @@ async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
 
     const baseAsset = "ETH"
     const bandPriceFeedFactory = await ethers.getContractFactory("BandPriceFeed")
-    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset, 900)) as BandPriceFeed
+    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset)) as BandPriceFeed
 
     return { bandPriceFeed, bandReference: testStdReference, baseAsset }
 }
 
-describe("BandPriceFeed/CumulativeTwap Spec", () => {
+describe("BandPriceFeed Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
@@ -63,7 +63,7 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
 
             expect(await bandPriceFeed.update())
                 .to.be.emit(bandPriceFeed, "PriceUpdated")
-                .withArgs(parseEther("400"), currentTime, 0)
+                .withArgs("ETH", parseEther("400"), currentTime, 0)
 
             const observation = await bandPriceFeed.observations(0)
             const round = roundData[0]
@@ -88,16 +88,14 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             expect(observation.priceCumulative).to.eq(parseEther("6000"))
         })
 
-        // skip this test for being compatible with Chainlink aggregator
-        // Chainlink aggregator might have the same timestamp in different round
-        it.skip("force error, the second update is the same timestamp", async () => {
+        it("force error, the second update is the same timestamp", async () => {
             await updatePrice(400, false)
 
             roundData.push([parseEther("440"), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IT")
+            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_IT")
         })
     })
 
@@ -261,23 +259,17 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
 
             // the longest interval = 255 * 15 = 3825, it should be revert when interval > 3826
             // here, we set interval to 3827 because hardhat increases the timestamp by 1 when any tx happens
-            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("CT_NEH")
+            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("BPF_NEH")
         })
     })
 
     describe("price is not updated yet", () => {
-        beforeEach(async () => {
-            roundData.push([parseEther("100"), currentTime, currentTime])
-            bandReference.getReferenceData.returns(() => {
-                return roundData[roundData.length - 1]
-            })
-        })
         it("get spot price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
         })
 
         it("force error, get twap price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("BPF_ND")
         })
     })
 })
