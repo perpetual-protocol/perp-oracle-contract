@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import { IPriceFeed } from "../interface/IPriceFeed.sol";
-import { ICachedTwap } from "../interface/ICachedTwap.sol";
 
 contract TestPriceFeed {
     address public chainlink;
@@ -35,16 +34,16 @@ contract TestPriceFeed {
 
     function cachedChainlinkPrice(uint256 interval) external {
         for (uint256 i = 0; i < 17; i++) {
-            ICachedTwap(chainlink).cacheTwap(interval);
+            IPriceFeed(chainlink).cacheTwap(interval);
         }
-        currentPrice = ICachedTwap(chainlink).cacheTwap(interval);
+        currentPrice = IPriceFeed(chainlink).cacheTwap(interval);
     }
 
     function cachedBandProtocolPrice(uint256 interval) external {
         for (uint256 i = 0; i < 17; i++) {
-            ICachedTwap(bandProtocol).cacheTwap(interval);
+            IPriceFeed(bandProtocol).cacheTwap(interval);
         }
-        currentPrice = ICachedTwap(bandProtocol).cacheTwap(interval);
+        currentPrice = IPriceFeed(bandProtocol).cacheTwap(interval);
     }
 
     //
@@ -55,6 +54,6 @@ contract TestPriceFeed {
     // timestamp moves if any txs happen in hardhat env and which causes cacheTwap() will recalculate all the time
     function getPrice(uint256 interval) external returns (uint256 twap, uint256 cachedTwap) {
         twap = IPriceFeed(bandProtocol).getPrice(interval);
-        cachedTwap = ICachedTwap(bandProtocol).cacheTwap(interval);
+        cachedTwap = IPriceFeed(bandProtocol).cacheTwap(interval);
     }
 }

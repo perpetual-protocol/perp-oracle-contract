@@ -33,4 +33,15 @@ abstract contract CachedTwap is CumulativeTwap {
 
         return _cachedTwap;
     }
+
+    function _getCachedTwap(
+        uint256 interval,
+        uint256 latestPrice,
+        uint256 latestUpdatedTimestamp
+    ) internal view returns (uint256) {
+        if (_blockTimestamp() == _lastUpdatedAt) {
+            return _cachedTwap;
+        }
+        return _getPrice(interval, latestPrice, latestUpdatedTimestamp);
+    }
 }

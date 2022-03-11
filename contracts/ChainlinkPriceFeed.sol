@@ -4,11 +4,10 @@ pragma solidity 0.7.6;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
-import { ICachedTwap } from "./interface/ICachedTwap.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
+contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CachedTwap {
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;
@@ -47,7 +46,7 @@ contract ChainlinkPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap
             return latestPrice;
         }
 
-        return _getPrice(interval, latestPrice, latestTimestamp);
+        return _getCachedTwap(interval, latestPrice, latestTimestamp);
     }
 
     function _getLatestRoundData()
