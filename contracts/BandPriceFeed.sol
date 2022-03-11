@@ -6,9 +6,11 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract BandPriceFeed is IPriceFeed, BlockContext {
     using Address for address;
+    using SafeMath for uint256;
 
     //
     // STRUCT
@@ -73,9 +75,9 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         // so 255 + 1 will be 0
         currentObservationIndex++;
 
-        uint256 elapsedTime = bandData.lastUpdatedBase - lastObservation.timestamp;
+        uint256 elapsedTime = bandData.lastUpdatedBase.sub(lastObservation.timestamp);
         observations[currentObservationIndex] = Observation({
-            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
+            priceCumulative: lastObservation.priceCumulative.add(lastObservation.price.mul(elapsedTime)),
             timestamp: bandData.lastUpdatedBase,
             price: bandData.rate
         });
@@ -100,12 +102,14 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         }
 
         uint256 currentTimestamp = _blockTimestamp();
-        uint256 targetTimestamp = currentTimestamp - interval;
+        uint256 targetTimestamp = currentTimestamp.sub(interval);
         (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(targetTimestamp);
         uint256 currentPriceCumulative =
-            lastestObservation.priceCumulative +
-                (lastestObservation.price * (latestBandData.lastUpdatedBase - lastestObservation.timestamp)) +
-                (latestBandData.rate * (currentTimestamp - latestBandData.lastUpdatedBase));
+            lastestObservation.priceCumulative.add(
+                (lastestObservation.price.mul(latestBandData.lastUpdatedBase.sub(lastestObservation.timestamp))).add(
+                    (latestBandData.rate.mul(currentTimestamp.sub(latestBandData.lastUpdatedBase)))
+                )
+            );
 
         //
         //                   beforeOrAt                    atOrAfter
@@ -128,15 +132,16 @@ contract BandPriceFeed is IPriceFeed, BlockContext {
         }
         // case3. in the middle
         else {
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
-            targetPriceCumulative =
-                beforeOrAt.priceCumulative +
-                ((atOrAfter.priceCumulative - beforeOrAt.priceCumulative) * targetTimeDelta) /
-                observationTimeDelta;
+            uint256 observationTimeDelta = atOrAfter.timestamp.sub(beforeOrAt.timestamp);
+            uint256 targetTimeDelta = targetTimestamp.sub(beforeOrAt.timestamp);
+            targetPriceCumulative = beforeOrAt.priceCumulative.add(
+                ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
+                    observationTimeDelta
+                )
+            );
         }
 
-        return (currentPriceCumulative - targetPriceCumulative) / (currentTimestamp - targetTimestamp);
+        return (currentPriceCumulative.sub(targetPriceCumulative)).div(currentTimestamp.sub(targetTimestamp));
     }
 
     //
