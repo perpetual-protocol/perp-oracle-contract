@@ -28,6 +28,7 @@ abstract contract CachedTwap is CumulativeTwap {
             return _cachedTwap;
         }
 
+        _update(latestPrice, latestUpdatedTimestamp);
         _lastUpdatedAt = _blockTimestamp();
         _cachedTwap = _getPrice(interval, latestPrice, latestUpdatedTimestamp);
 
