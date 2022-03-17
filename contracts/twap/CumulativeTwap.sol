@@ -59,7 +59,7 @@ contract CumulativeTwap is BlockContext {
         emit PriceUpdated(price, lastUpdatedTimestamp, currentObservationIndex);
     }
 
-    function _getPrice(
+    function _calculateTwapPrice(
         uint256 interval,
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
