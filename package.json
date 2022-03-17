@@ -1,8 +1,27 @@
 {
   "name": "@perp/perp-oracle-contract",
   "version": "0.3.2",
-  "description": "",
-  "main": "hardhat.config.js",
+  "description": "Perpetual Protocol Curie (V2) oracle contracts",
+  "license": "GPL-3.0-or-later",
+  "author": {
+    "name": "Perpetual Protocol",
+    "email": "hi@perp.fi",
+    "url": "https://perp.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/perpetual-protocol/perp-oracle-contract.git"
+  },
+  "homepage": "https://perp.com/",
+  "keywords": [
+    "perpetual-protocol",
+    "perpetual-protocol-v2",
+    "perp",
+    "oracle",
+    "contracts",
+    "artifacts"
+  ],
+  "main": "index.js",
   "files": [
     "contracts/base",
     "contracts/twap",
@@ -25,8 +44,6 @@
     "lint-tests": "if grep -qr 'test' -e '.only('; then echo 'found .only() in tests'; exit 1; else echo 'not found .only() in tests'; fi",
     "lint-staged": "lint-staged"
   },
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "@chainlink/contracts": "0.1.7",
     "@defi-wonderland/smock": "2.0.7",

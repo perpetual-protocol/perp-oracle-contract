@@ -1,12 +1,12 @@
-# perp-oracle
+# perp-oracle-contract
 
 [![@perp/perp-oracle-contract on npm](https://img.shields.io/npm/v/@perp/perp-oracle-contract?style=flat-square)](https://www.npmjs.com/package/@perp/perp-oracle-contract)
 
-This repository contains the oracle smart contracts for [Perpetual Protocol Curie (v2)](https://perp.com/). For core contracts, see [perp-curie](https://github.com/perpetual-protocol/perp-curie).
+This repository contains the oracle smart contracts for [Perpetual Protocol Curie (v2)](https://perp.com/). For core contracts, see [perp-curie-contract](https://github.com/perpetual-protocol/perp-curie-contract).
 
 Contract source code is also published as npm package:
 
-- [@perp/perp-oracle-contract](https://www.npmjs.com/package/@perp/perp-oracle-contract) (source code)
+- [@perp/perp-oracle-contract](https://www.npmjs.com/package/@perp/perp-oracle-contract)
 
 ## Local Development
 
@@ -15,7 +15,7 @@ You need Node.js 16+ to build. Use [nvm](https://github.com/nvm-sh/nvm) to insta
 Clone this repository, install Node.js dependencies, and build the source code:
 
 ```bash
-git clone git@github.com:perpetual-protocol/perp-oracle.git
+git clone git@github.com:perpetual-protocol/perp-oracle-contract.git
 npm i
 npm run build
 ```
