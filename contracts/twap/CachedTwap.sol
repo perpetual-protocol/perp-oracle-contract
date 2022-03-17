@@ -6,7 +6,7 @@ import { CumulativeTwap } from "./CumulativeTwap.sol";
 
 abstract contract CachedTwap is CumulativeTwap {
     uint256 internal _cachedTwap;
-    uint256 internal _lastUpdatedAt;
+    uint160 internal _lastUpdatedAt;
     uint80 internal _interval;
 
     constructor(uint80 interval) {
@@ -29,7 +29,7 @@ abstract contract CachedTwap is CumulativeTwap {
         }
 
         _update(latestPrice, latestUpdatedTimestamp);
-        _lastUpdatedAt = _blockTimestamp();
+        _lastUpdatedAt = uint160(_blockTimestamp());
         _cachedTwap = _calculateTwapPrice(interval, latestPrice, latestUpdatedTimestamp);
 
         return _cachedTwap;
