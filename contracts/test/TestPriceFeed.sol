@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT License
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
 
 import { IPriceFeed } from "../interface/IPriceFeed.sol";
