@@ -12,9 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Refactor `ChainlinkPriceFeed`, `BandPriceFeed`, and `EmergencyPriceFeed` with efficient TWAP calculation.
-
-### Changed
-
 - Change the license to `GPL-3.0-or-later`.
 
 ## [0.3.2] - 2022-03-04
