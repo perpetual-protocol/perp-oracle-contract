@@ -30,6 +30,8 @@ contract EmergencyPriceFeed is IPriceFeed, BlockContext {
         pool = poolArg;
     }
 
+    function cacheTwap(uint256 interval) external override returns (uint256) {}
+
     //
     // EXTERNAL VIEW
     //

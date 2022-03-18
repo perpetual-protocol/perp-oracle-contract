@@ -5,6 +5,7 @@
   "main": "hardhat.config.js",
   "files": [
     "contracts/base",
+    "contracts/twap",
     "contracts/interface",
     "contracts/ChainlinkPriceFeed.sol",
     "contracts/BandPriceFeed.sol",

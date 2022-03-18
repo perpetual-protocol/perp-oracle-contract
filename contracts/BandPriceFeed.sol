@@ -5,11 +5,10 @@ pragma experimental ABIEncoderV2;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { IPriceFeed } from "./interface/IPriceFeed.sol";
-import { ICachedTwap } from "./interface/ICachedTwap.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract BandPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
+contract BandPriceFeed is IPriceFeed, BlockContext, CachedTwap {
     using Address for address;
 
     //
@@ -59,7 +58,7 @@ contract BandPriceFeed is IPriceFeed, ICachedTwap, BlockContext, CachedTwap {
         if (interval == 0) {
             return latestBandData.rate;
         }
-        return _getPrice(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
+        return _getCachedTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
     }
 
     //

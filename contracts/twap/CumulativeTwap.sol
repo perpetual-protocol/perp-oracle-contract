@@ -59,13 +59,13 @@ contract CumulativeTwap is BlockContext {
         emit PriceUpdated(price, lastUpdatedTimestamp, currentObservationIndex);
     }
 
-    function _getPrice(
+    function _calculateTwapPrice(
         uint256 interval,
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
     ) internal view returns (uint256) {
-        Observation memory lastestObservation = observations[currentObservationIndex];
-        if (lastestObservation.price == 0) {
+        Observation memory latestObservation = observations[currentObservationIndex];
+        if (latestObservation.price == 0) {
             // CT_ND: no data
             revert("CT_ND");
         }
@@ -74,8 +74,8 @@ contract CumulativeTwap is BlockContext {
         uint256 targetTimestamp = currentTimestamp.sub(interval);
         (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 currentCumulativePrice =
-            lastestObservation.priceCumulative.add(
-                (lastestObservation.price.mul(latestUpdatedTimestamp.sub(lastestObservation.timestamp))).add(
+            latestObservation.priceCumulative.add(
+                (latestObservation.price.mul(latestUpdatedTimestamp.sub(latestObservation.timestamp))).add(
                     latestPrice.mul(currentTimestamp.sub(latestUpdatedTimestamp))
                 )
             );
