@@ -25,3 +25,7 @@ Run all the test cases:
 ```bash
 npm run test
 ```
+
+## Changelog
+
+See [CHANGELOG](https://github.com/perpetual-protocol/perp-oracle-contract/blob/main/CHANGELOG.md).
