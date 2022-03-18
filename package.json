@@ -1,6 +1,6 @@
 {
   "name": "@perp/perp-oracle-contract",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Perpetual Protocol Curie (v2) oracle contracts",
   "license": "GPL-3.0-or-later",
   "author": {
