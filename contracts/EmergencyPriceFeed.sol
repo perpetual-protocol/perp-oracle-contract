@@ -41,6 +41,10 @@ contract EmergencyPriceFeed is IPriceFeed, BlockContext {
         return _formatX96ToX10_18(markTwapX96);
     }
 
+    function isUpdatable() external view override returns (bool) {
+        return true;
+    }
+
     //
     // EXTERNAL PURE
     //

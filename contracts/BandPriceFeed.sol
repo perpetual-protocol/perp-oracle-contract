@@ -53,6 +53,11 @@ contract BandPriceFeed is IPriceFeed, BlockContext, CachedTwap {
     // EXTERNAL VIEW
     //
 
+    function isUpdatable() external view override returns (bool) {
+        IStdReference.ReferenceData memory bandData = _getReferenceData();
+        return _isUpdatable(bandData.lastUpdatedBase);
+    }
+
     function getPrice(uint256 interval) public view override returns (uint256) {
         IStdReference.ReferenceData memory latestBandData = _getReferenceData();
         if (interval == 0) {

@@ -31,6 +31,14 @@ contract CumulativeTwap is BlockContext {
 
     uint8 public currentObservationIndex;
 
+    function _isUpdatable(uint256 lastUpdatedTimestamp) internal view returns (bool) {
+        Observation memory lastObservation = observations[currentObservationIndex];
+        if (lastUpdatedTimestamp > lastObservation.timestamp) {
+            return true;
+        }
+        return false;
+    }
+
     function _update(uint256 price, uint256 lastUpdatedTimestamp) internal {
         // for the first time update
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
@@ -40,10 +48,8 @@ contract CumulativeTwap is BlockContext {
         }
 
         // CT_IT: invalid timestamp
-        // add `==` in the require statement in case that two or more price with the same timestamp
-        // this might happen on Optimism bcs their timestamp is not up-to-date
         Observation memory lastObservation = observations[currentObservationIndex];
-        require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
+        require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
         // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0
