@@ -48,11 +48,6 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CachedTwap {
         return _getCachedTwap(interval, latestPrice, latestTimestamp);
     }
 
-    function isUpdatable() external view override returns (bool) {
-        (, , uint256 latestTimestamp) = _getLatestRoundData();
-        return _isUpdatable(latestTimestamp);
-    }
-
     function _getLatestRoundData()
         private
         view

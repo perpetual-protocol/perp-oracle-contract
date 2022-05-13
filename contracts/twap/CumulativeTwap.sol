@@ -31,14 +31,6 @@ contract CumulativeTwap is BlockContext {
 
     uint8 public currentObservationIndex;
 
-    function _isUpdatable(uint256 lastUpdatedTimestamp) internal view returns (bool) {
-        Observation memory lastObservation = observations[currentObservationIndex];
-        if (lastUpdatedTimestamp > lastObservation.timestamp) {
-            return true;
-        }
-        return false;
-    }
-
     function _update(uint256 price, uint256 lastUpdatedTimestamp) internal {
         // for the first time update
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {

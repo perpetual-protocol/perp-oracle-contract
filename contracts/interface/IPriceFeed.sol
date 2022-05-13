@@ -11,8 +11,4 @@ interface IPriceFeed {
     /// @dev Returns the index price of the token.
     /// @param interval The interval represents twap interval.
     function getPrice(uint256 interval) external view returns (uint256);
-
-    /// @dev Returns true if
-    ///      latest timestamp of external price feed is greater than latest timestamp of Observation[].
-    function isUpdatable() external view returns (bool);
 }

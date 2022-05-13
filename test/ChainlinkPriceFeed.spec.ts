@@ -58,11 +58,9 @@ describe("ChainlinkPriceFeed Spec", () => {
             aggregator.latestRoundData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            expect(await chainlinkPriceFeed.isUpdatable()).to.be.eq(true)
 
             // update without forward timestamp
             await updatePrice(0, 400, false)
-            await expect(await chainlinkPriceFeed.isUpdatable()).to.be.eq(false)
             await expect(chainlinkPriceFeed.update()).to.be.revertedWith("CT_IT")
         })
     })
