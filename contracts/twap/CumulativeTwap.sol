@@ -40,10 +40,8 @@ contract CumulativeTwap is BlockContext {
         }
 
         // CT_IT: invalid timestamp
-        // add `==` in the require statement in case that two or more price with the same timestamp
-        // this might happen on Optimism bcs their timestamp is not up-to-date
         Observation memory lastObservation = observations[currentObservationIndex];
-        require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
+        require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
         // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0

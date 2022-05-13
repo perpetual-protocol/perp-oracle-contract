@@ -22,7 +22,6 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CachedTwap {
     /// @dev anyone can help update it.
     function update() external {
         (, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData();
-
         _update(latestPrice, latestTimestamp);
     }
 

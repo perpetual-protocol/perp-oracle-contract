@@ -86,6 +86,12 @@ describe("Cached Twap Spec", () => {
         await updatePrice(400)
         await updatePrice(405)
         await updatePrice(410)
+
+        await bandReference.setReferenceData({
+            rate: parseEther("415"),
+            lastUpdatedBase: currentTime,
+            lastUpdatedQuote: currentTime,
+        })
     })
 
     describe("cacheTwap should be exactly the same getPrice()", () => {
@@ -98,6 +104,8 @@ describe("Cached Twap Spec", () => {
         it("if cached twap found, twap price should equal cached twap", async () => {
             const price = await testPriceFeed.callStatic.getPrice(45)
             expect(price.twap).to.eq(price.cachedTwap)
+            // `getPrice` here is no a view function, it mocked function in TestPriceFeed
+            // and it will update the cache if necessary
             expect(price.twap).to.eq(await bandPriceFeed.getPrice(45))
         })
 
@@ -113,6 +121,8 @@ describe("Cached Twap Spec", () => {
 
             const price2 = await testPriceFeed.callStatic.getPrice(45)
             expect(price2.twap).to.eq(price2.cachedTwap)
+            // `getPrice` here is no a view function, it mocked function in TestPriceFeed
+            // and it will update the cache if necessary
             expect(price2.twap).to.eq(await bandPriceFeed.getPrice(45))
 
             expect(price1.cachedTwap).to.not.eq(price2.cachedTwap)
