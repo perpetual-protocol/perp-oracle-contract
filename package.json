@@ -28,7 +28,6 @@
     "contracts/interface",
     "contracts/ChainlinkPriceFeed.sol",
     "contracts/BandPriceFeed.sol",
-    "contracts/EmergencyPriceFeed.sol",
     "artifacts/contracts/**/*.json",
     "!artifacts/contracts/**/*.dbg.json",
     "!artifacts/contracts/test/**/*",
