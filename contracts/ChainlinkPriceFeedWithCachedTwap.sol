@@ -7,7 +7,7 @@ import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedWithCachedTwap is IPriceFeed, BlockContext, CachedTwap {
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;

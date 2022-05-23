@@ -1,6 +1,12 @@
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { BandPriceFeed, ChainlinkPriceFeed, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
+import {
+    BandPriceFeed,
+    ChainlinkPriceFeedWithCachedTwap,
+    TestAggregatorV3,
+    TestPriceFeed,
+    TestStdReference,
+} from "../typechain"
 
 const twapInterval = 900
 interface PriceFeedFixture {
@@ -9,7 +15,7 @@ interface PriceFeedFixture {
     baseAsset: string
 
     // chainlinik
-    chainlinkPriceFeed: ChainlinkPriceFeed
+    chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
     aggregator: TestAggregatorV3
 }
 
@@ -34,7 +40,7 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
     const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(
         testAggregator.address,
         twapInterval,
-    )) as ChainlinkPriceFeed
+    )) as ChainlinkPriceFeedWithCachedTwap
 
     return { bandPriceFeed, bandReference: testStdReference, baseAsset, chainlinkPriceFeed, aggregator: testAggregator }
 }
@@ -44,7 +50,7 @@ describe.skip("Price feed gas test", () => {
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
     let bandReference: TestStdReference
-    let chainlinkPriceFeed: ChainlinkPriceFeed
+    let chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
     let aggregator: TestAggregatorV3
     let currentTime: number
     let testPriceFeed: TestPriceFeed
