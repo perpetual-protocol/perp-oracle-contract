@@ -50,6 +50,11 @@ describe("Cached Twap Spec", () => {
     let testPriceFeed: TestPriceFeed
     let round: number
 
+    async function setNextBlockTimestamp(timestamp: number) {
+        await ethers.provider.send("evm_setNextBlockTimestamp", [timestamp])
+        await ethers.provider.send("evm_mine", [])
+    }
+
     async function updatePrice(price: number, forward: boolean = true): Promise<void> {
         await bandReference.setReferenceData({
             rate: parseEther(price.toString()),
@@ -63,8 +68,7 @@ describe("Cached Twap Spec", () => {
 
         if (forward) {
             currentTime += 15
-            await ethers.provider.send("evm_setNextBlockTimestamp", [currentTime])
-            await ethers.provider.send("evm_mine", [])
+            await setNextBlockTimestamp(currentTime)
         }
     }
 
@@ -126,6 +130,26 @@ describe("Cached Twap Spec", () => {
             expect(price2.twap).to.eq(await bandPriceFeed.getPrice(45))
 
             expect(price1.cachedTwap).to.not.eq(price2.cachedTwap)
+        })
+
+        it("re-calculate twap if block timestamp is different from last cached twap timestamp", async () => {
+            const price1 = await testPriceFeed.callStatic.getPrice(45)
+            await testPriceFeed.getPrice(45)
+
+            // forword block timestamp 15sec
+            currentTime += 15
+            await setNextBlockTimestamp(currentTime)
+
+            const price2 = await bandPriceFeed.getPrice(45)
+            expect(price2).to.not.eq(price1.twap)
+        })
+
+        it("re-calculate twap if interval is different from interval of cached twap", async () => {
+            await bandPriceFeed.cacheTwap(45)
+            const price1 = await bandPriceFeed.getPrice(45)
+            const price2 = await bandPriceFeed.getPrice(15)
+            // shoule re-calculate twap
+            expect(price2).to.not.eq(price1)
         })
     })
 })
