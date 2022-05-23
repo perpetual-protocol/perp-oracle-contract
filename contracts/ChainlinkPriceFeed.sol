@@ -20,12 +20,6 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
         _aggregator = aggregator;
     }
 
-    /// @dev not support cached twap
-    function cacheTwap(uint256 interval) external override returns (uint256) {
-        // CPF_NS: not supported
-        revert("CPF_NS");
-    }
-
     function decimals() external view override returns (uint8) {
         return _aggregator.decimals();
     }

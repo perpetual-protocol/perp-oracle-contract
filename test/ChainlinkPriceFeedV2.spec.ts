@@ -2,10 +2,10 @@ import { FakeContract, smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { ChainlinkPriceFeedWithCachedTwap, TestAggregatorV3 } from "../typechain"
+import { ChainlinkPriceFeedV2, TestAggregatorV3 } from "../typechain"
 
 interface ChainlinkPriceFeedFixture {
-    chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
+    chainlinkPriceFeed: ChainlinkPriceFeedV2
     aggregator: FakeContract<TestAggregatorV3>
 }
 
@@ -13,19 +13,16 @@ async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
     const aggregator = await smock.fake<TestAggregatorV3>("TestAggregatorV3")
     aggregator.decimals.returns(() => 18)
 
-    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedWithCachedTwap")
-    const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(
-        aggregator.address,
-        900,
-    )) as ChainlinkPriceFeedWithCachedTwap
+    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedV2")
+    const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(aggregator.address, 900)) as ChainlinkPriceFeedV2
 
     return { chainlinkPriceFeed, aggregator }
 }
 
-describe("ChainlinkPriceFeedWithCachedTwap Spec", () => {
+describe("ChainlinkPriceFeedV2 Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
-    let chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
+    let chainlinkPriceFeed: ChainlinkPriceFeedV2
     let aggregator: FakeContract<TestAggregatorV3>
     let currentTime: number
     let roundData: any[]

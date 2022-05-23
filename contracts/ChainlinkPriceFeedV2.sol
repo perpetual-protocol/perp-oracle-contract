@@ -3,11 +3,11 @@ pragma solidity 0.7.6;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { IPriceFeedV2 } from "./interface/IPriceFeedV2.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedWithCachedTwap is IPriceFeed, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV2 is IPriceFeedV2, BlockContext, CachedTwap {
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;

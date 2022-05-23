@@ -1,13 +1,7 @@
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import {
-    BandPriceFeed,
-    ChainlinkPriceFeedWithCachedTwap,
-    TestAggregatorV3,
-    TestPriceFeed,
-    TestStdReference,
-} from "../typechain"
+import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
 
 interface PriceFeedFixture {
     bandPriceFeed: BandPriceFeed
@@ -15,7 +9,7 @@ interface PriceFeedFixture {
     baseAsset: string
 
     // chainlinik
-    chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
+    chainlinkPriceFeed: ChainlinkPriceFeedV2
     aggregator: TestAggregatorV3
 }
 async function priceFeedFixture(): Promise<PriceFeedFixture> {
@@ -36,11 +30,11 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
     const testAggregatorFactory = await ethers.getContractFactory("TestAggregatorV3")
     const testAggregator = await testAggregatorFactory.deploy()
 
-    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedWithCachedTwap")
+    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedV2")
     const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(
         testAggregator.address,
         twapInterval,
-    )) as ChainlinkPriceFeedWithCachedTwap
+    )) as ChainlinkPriceFeedV2
 
     return { bandPriceFeed, bandReference: testStdReference, baseAsset, chainlinkPriceFeed, aggregator: testAggregator }
 }
@@ -50,7 +44,7 @@ describe("Cached Twap Spec", () => {
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
     let bandReference: TestStdReference
-    let chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap
+    let chainlinkPriceFeed: ChainlinkPriceFeedV2
     let aggregator: TestAggregatorV3
     let currentTime: number
     let testPriceFeed: TestPriceFeed

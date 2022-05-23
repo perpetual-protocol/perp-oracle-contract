@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [unreleased]
-- Change contract name `ChainlinkPriceFeed` to `ChainlinkPriceFeedWithCachedTwap`.
+- Change contract name `ChainlinkPriceFeed` to `ChainlinkPriceFeedV2`.
 - Add origin `ChainlinkPriceFeed`, which calculates the twap by round data instead of cached twap.
 
 ## [0.3.4] - 2022-04-01
