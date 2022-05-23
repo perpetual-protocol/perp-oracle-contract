@@ -72,7 +72,7 @@ describe("Cached Twap Spec", () => {
         }
     }
 
-    before(async () => {
+    beforeEach(async () => {
         const _fixture = await loadFixture(priceFeedFixture)
         bandReference = _fixture.bandReference
         bandPriceFeed = _fixture.bandPriceFeed
