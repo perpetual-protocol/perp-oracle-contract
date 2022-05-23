@@ -22,7 +22,7 @@ async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
     return { chainlinkPriceFeed, aggregator }
 }
 
-describe("ChainlinkPriceFeed Spec", () => {
+describe("ChainlinkPriceFeedWithCachedTwap Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let chainlinkPriceFeed: ChainlinkPriceFeedWithCachedTwap

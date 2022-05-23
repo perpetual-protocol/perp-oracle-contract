@@ -36,7 +36,7 @@ async function priceFeedFixture(): Promise<PriceFeedFixture> {
     const testAggregatorFactory = await ethers.getContractFactory("TestAggregatorV3")
     const testAggregator = await testAggregatorFactory.deploy()
 
-    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeed")
+    const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedWithCachedTwap")
     const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(
         testAggregator.address,
         twapInterval,
