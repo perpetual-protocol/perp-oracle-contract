@@ -81,6 +81,11 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
         return weightedPrice == 0 ? latestPrice : weightedPrice.div(interval);
     }
 
+    function getRoundData(uint80 roundId) external view returns (uint256, uint256) {
+        (, uint256 price, uint256 timestamp) = _getRoundData(roundId);
+        return (price, timestamp);
+    }
+
     function _getLatestRoundData()
         private
         view
