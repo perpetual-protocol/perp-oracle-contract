@@ -7,10 +7,10 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 import { FixedPoint96 } from "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { IPriceFeedV2 } from "./interface/IPriceFeedV2.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 
-contract EmergencyPriceFeed is IPriceFeed, BlockContext {
+contract EmergencyPriceFeed is IPriceFeedV2, BlockContext {
     using Address for address;
 
     //

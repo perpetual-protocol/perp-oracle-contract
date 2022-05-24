@@ -4,11 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { IPriceFeedV2 } from "./interface/IPriceFeedV2.sol";
 import { IStdReference } from "./interface/bandProtocol/IStdReference.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract BandPriceFeed is IPriceFeed, BlockContext, CachedTwap {
+contract BandPriceFeed is IPriceFeedV2, BlockContext, CachedTwap {
     using Address for address;
 
     //
