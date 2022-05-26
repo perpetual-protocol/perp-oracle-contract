@@ -82,8 +82,16 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
     }
 
     function getRoundData(uint80 roundId) external view returns (uint256, uint256) {
-        (, uint256 price, uint256 timestamp) = _getRoundData(roundId);
-        return (price, timestamp);
+        // aggregator will revert if roundId is invalid or not existed
+        (, int256 price, , uint256 updatedAt, ) = _aggregator.getRoundData(roundId);
+
+        // CPF_PIN: Price Is Negative
+        require(price > 0, "CPF_PIN");
+
+        // CPF_RINC: Round Is Not Complete
+        require(updatedAt > 0, "CPF_RINC");
+
+        return (uint256(price), updatedAt);
     }
 
     function _getLatestRoundData()
