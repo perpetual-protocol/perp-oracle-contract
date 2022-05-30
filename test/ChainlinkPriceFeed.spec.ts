@@ -1,16 +1,18 @@
-import { FakeContract, smock } from "@defi-wonderland/smock"
+import { MockContract, smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
-import { parseEther } from "ethers/lib/utils"
+import { BigNumber } from "ethers"
+import { parseEther, parseUnits } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { ChainlinkPriceFeed, TestAggregatorV3 } from "../typechain"
+import { ChainlinkPriceFeed, TestAggregatorV3, TestAggregatorV3__factory } from "../typechain"
 
 interface ChainlinkPriceFeedFixture {
     chainlinkPriceFeed: ChainlinkPriceFeed
-    aggregator: FakeContract<TestAggregatorV3>
+    aggregator: MockContract<TestAggregatorV3>
 }
 
 async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
-    const aggregator = await smock.fake<TestAggregatorV3>("TestAggregatorV3")
+    const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3")
+    const aggregator = await aggregatorFactory.deploy()
     aggregator.decimals.returns(() => 18)
 
     const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeed")
@@ -19,11 +21,16 @@ async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
     return { chainlinkPriceFeed, aggregator }
 }
 
+function computeRoundId(phaseId: number, aggregatorRoundId: number): string {
+    const roundId = (BigInt(phaseId) << BigInt("64")) | BigInt(aggregatorRoundId)
+    return roundId.toString()
+}
+
 describe("ChainlinkPriceFeed Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let chainlinkPriceFeed: ChainlinkPriceFeed
-    let aggregator: FakeContract<TestAggregatorV3>
+    let aggregator: MockContract<TestAggregatorV3>
     let currentTime: number
     let roundData: any[]
 
@@ -170,6 +177,84 @@ describe("ChainlinkPriceFeed Spec", () => {
         it("return latest price if interval is zero", async () => {
             const price = await chainlinkPriceFeed.getPrice(0)
             expect(price).to.eq(parseEther("410"))
+        })
+    })
+
+    it("getAggregator", async () => {
+        expect(await chainlinkPriceFeed.getAggregator()).to.be.eq(aggregator.address)
+    })
+
+    describe("getRoundData", async () => {
+        let priceFeedDecimals: number
+        let timestamp: number
+        let roundDataMap: Record<string, any>
+
+        beforeEach(async () => {
+            priceFeedDecimals = await chainlinkPriceFeed.decimals()
+            timestamp = (await waffle.provider.getBlock("latest")).timestamp
+
+            roundDataMap = {
+                // "roundId": [roundId, answer, startedAt, updatedAt, answeredInRound]
+                [computeRoundId(1, 1)]: [
+                    computeRoundId(1, 1),
+                    parseUnits("1800", priceFeedDecimals),
+                    BigNumber.from(timestamp),
+                    BigNumber.from(timestamp),
+                    computeRoundId(1, 1),
+                ],
+                [computeRoundId(1, 2)]: [
+                    computeRoundId(1, 2),
+                    parseUnits("1900", priceFeedDecimals),
+                    BigNumber.from(timestamp + 15),
+                    BigNumber.from(timestamp + 15),
+                    computeRoundId(1, 2),
+                ],
+                [computeRoundId(2, 10000)]: [
+                    computeRoundId(2, 10000),
+                    parseUnits("1700", priceFeedDecimals),
+                    BigNumber.from(timestamp + 30),
+                    BigNumber.from(timestamp + 30),
+                    computeRoundId(2, 10000),
+                ],
+            }
+
+            aggregator.getRoundData.returns(roundId => {
+                return roundDataMap[roundId]
+                    ? roundDataMap[roundId]
+                    : [computeRoundId(100, 100), 0, 0, 0, computeRoundId(100, 100)]
+            })
+        })
+
+        it("computeRoundId", async () => {
+            expect(computeRoundId(1, 1)).to.be.eq(await aggregator.computeRoundId(1, 1))
+            expect(computeRoundId(1, 2)).to.be.eq(await aggregator.computeRoundId(1, 2))
+            expect(computeRoundId(2, 10000)).to.be.eq(await aggregator.computeRoundId(2, 10000))
+        })
+
+        it("getRoundData with valid roundId", async () => {
+            // TODO: not sure why expect(res).to.be.deep.eq([xxx, xxx]) doesn't work
+            const roundId = computeRoundId(1, 1)
+            const round = roundDataMap[roundId]
+            const res = await chainlinkPriceFeed.getRoundData(roundId)
+            expect(res[0]).to.be.deep.eq(round[1])
+            expect(res[1]).to.be.deep.eq(round[3])
+
+            const roundId2 = computeRoundId(1, 2)
+            const round2 = roundDataMap[roundId2]
+            const res2 = await chainlinkPriceFeed.getRoundData(roundId2)
+            expect(res2[0]).to.be.deep.eq(round2[1])
+            expect(res2[1]).to.be.deep.eq(round2[3])
+
+            const roundId3 = computeRoundId(2, 10000)
+            const round3 = roundDataMap[roundId3]
+            const res3 = await chainlinkPriceFeed.getRoundData(roundId3)
+            expect(res3[0]).to.be.deep.eq(round3[1])
+            expect(res3[1]).to.be.deep.eq(round3[3])
+        })
+
+        it("force error, getRoundData with invalid roundId", async () => {
+            const invalidRoundId = "123"
+            await expect(chainlinkPriceFeed.getRoundData(invalidRoundId)).to.be.revertedWith("CPF_IP")
         })
     })
 })
