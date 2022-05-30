@@ -24,6 +24,10 @@ contract ChainlinkPriceFeed is IPriceFeed, BlockContext {
         return _aggregator.decimals();
     }
 
+    function getAggregator() external view returns (address) {
+        return address(_aggregator);
+    }
+
     function getPrice(uint256 interval) external view override returns (uint256) {
         // there are 3 timestamps: base(our target), previous & current
         // base: now - _interval
