@@ -1,16 +1,17 @@
-import { FakeContract, smock } from "@defi-wonderland/smock"
+import { MockContract, smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { ChainlinkPriceFeedV2, TestAggregatorV3 } from "../typechain"
+import { ChainlinkPriceFeedV2, TestAggregatorV3, TestAggregatorV3__factory } from "../typechain"
 
 interface ChainlinkPriceFeedFixture {
     chainlinkPriceFeed: ChainlinkPriceFeedV2
-    aggregator: FakeContract<TestAggregatorV3>
+    aggregator: MockContract<TestAggregatorV3>
 }
 
 async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
-    const aggregator = await smock.fake<TestAggregatorV3>("TestAggregatorV3")
+    const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3")
+    const aggregator = await aggregatorFactory.deploy()
     aggregator.decimals.returns(() => 18)
 
     const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedV2")
@@ -23,7 +24,7 @@ describe("ChainlinkPriceFeedV2 Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let chainlinkPriceFeed: ChainlinkPriceFeedV2
-    let aggregator: FakeContract<TestAggregatorV3>
+    let aggregator: MockContract<TestAggregatorV3>
     let currentTime: number
     let roundData: any[]
 
