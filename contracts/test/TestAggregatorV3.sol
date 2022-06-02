@@ -87,6 +87,8 @@ contract TestAggregatorV3 is AggregatorV3Interface {
         );
     }
 
+    // for debug only
+    // https://docs.chain.link/docs/historical-price-data/#roundid-in-proxy
     function computeRoundId(uint16 phaseId, uint64 aggregatorRoundId) external pure returns (uint80) {
         return uint80((uint256(phaseId) << 64) | aggregatorRoundId);
     }

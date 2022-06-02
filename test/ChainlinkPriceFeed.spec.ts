@@ -30,6 +30,7 @@ async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
     return { chainlinkPriceFeed, aggregator, chainlinkPriceFeed2, aggregator2 }
 }
 
+// https://docs.chain.link/docs/historical-price-data/#roundid-in-proxy
 function computeRoundId(phaseId: number, aggregatorRoundId: number): string {
     const roundId = (BigInt(phaseId) << BigInt("64")) | BigInt(aggregatorRoundId)
     return roundId.toString()
@@ -228,6 +229,24 @@ describe("ChainlinkPriceFeed Spec", () => {
                 BigNumber.from(currentTime + 30),
                 computeRoundId(2, 10000),
             )
+
+            // updatedAt is 0 means the round is not complete and should not be used
+            await aggregator2.setRoundData(
+                computeRoundId(2, 20000),
+                parseUnits("-0.1", priceFeedDecimals2),
+                BigNumber.from(currentTime + 45),
+                BigNumber.from(0),
+                computeRoundId(2, 20000),
+            )
+
+            // updatedAt is 0 means the round is not complete and should not be used
+            await aggregator2.setRoundData(
+                computeRoundId(2, 20001),
+                parseUnits("5000", priceFeedDecimals2),
+                BigNumber.from(currentTime + 45),
+                BigNumber.from(0),
+                computeRoundId(2, 20001),
+            )
         })
 
         it("computeRoundId", async () => {
@@ -253,9 +272,16 @@ describe("ChainlinkPriceFeed Spec", () => {
             ])
         })
 
-        it("force error, getRoundData with invalid roundId", async () => {
-            const invalidRoundId = "123"
-            await expect(chainlinkPriceFeed2.getRoundData(invalidRoundId)).to.be.revertedWith("CPF_IP")
+        it("force error, getRoundData when price <= 0", async () => {
+            // price < 0
+            await expect(chainlinkPriceFeed2.getRoundData(computeRoundId(2, 20000))).to.be.revertedWith("CPF_IP")
+
+            // price = 0
+            await expect(chainlinkPriceFeed2.getRoundData("123")).to.be.revertedWith("CPF_IP")
+        })
+
+        it("force error, getRoundData when round is not complete", async () => {
+            await expect(chainlinkPriceFeed2.getRoundData(computeRoundId(2, 20001))).to.be.revertedWith("CPF_RINC")
         })
     })
 
