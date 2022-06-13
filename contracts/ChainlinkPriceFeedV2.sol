@@ -38,6 +38,10 @@ contract ChainlinkPriceFeedV2 is IPriceFeedV2, BlockContext, CachedTwap {
         return _aggregator.decimals();
     }
 
+    function getAggregator() external view returns (address) {
+        return address(_aggregator);
+    }
+
     function getPrice(uint256 interval) external view override returns (uint256) {
         (uint80 round, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData();
 
