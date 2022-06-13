@@ -4,6 +4,7 @@ import { BigNumber } from "ethers"
 import { parseEther, parseUnits } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { ChainlinkPriceFeed, TestAggregatorV3, TestAggregatorV3__factory } from "../typechain"
+import { computeRoundId } from "./shared/chainlink"
 
 interface ChainlinkPriceFeedFixture {
     chainlinkPriceFeed: ChainlinkPriceFeed
@@ -28,12 +29,6 @@ async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
     const chainlinkPriceFeed2 = (await chainlinkPriceFeedFactory2.deploy(aggregator2.address)) as ChainlinkPriceFeed
 
     return { chainlinkPriceFeed, aggregator, chainlinkPriceFeed2, aggregator2 }
-}
-
-// https://docs.chain.link/docs/historical-price-data/#roundid-in-proxy
-function computeRoundId(phaseId: number, aggregatorRoundId: number): string {
-    const roundId = (BigInt(phaseId) << BigInt("64")) | BigInt(aggregatorRoundId)
-    return roundId.toString()
 }
 
 describe("ChainlinkPriceFeed Spec", () => {
