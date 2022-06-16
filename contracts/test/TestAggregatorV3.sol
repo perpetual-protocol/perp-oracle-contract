@@ -10,10 +10,24 @@ contract TestAggregatorV3 is AggregatorV3Interface {
         uint256 updatedAt;
         uint80 answeredInRound;
     }
+
     mapping(uint80 => RoundData) public roundData;
+
     uint80 public latestRound;
 
     constructor() {}
+
+    function decimals() external view override returns (uint8) {
+        return 18;
+    }
+
+    function description() external view override returns (string memory) {
+        revert();
+    }
+
+    function version() external view override returns (uint256) {
+        revert();
+    }
 
     function setRoundData(
         uint80 roundId,
@@ -29,18 +43,6 @@ contract TestAggregatorV3 is AggregatorV3Interface {
             answeredInRound: answeredInRound
         });
         latestRound = roundId;
-    }
-
-    function decimals() external view override returns (uint8) {
-        18;
-    }
-
-    function description() external view override returns (string memory) {
-        revert();
-    }
-
-    function version() external view override returns (uint256) {
-        revert();
     }
 
     function getRoundData(uint80 _roundId)
@@ -83,5 +85,11 @@ contract TestAggregatorV3 is AggregatorV3Interface {
             roundData[latestRound].updatedAt,
             roundData[latestRound].answeredInRound
         );
+    }
+
+    // won't use in production, just for knowing how roundId works
+    // https://docs.chain.link/docs/historical-price-data/#roundid-in-proxy
+    function computeRoundId(uint16 phaseId, uint64 aggregatorRoundId) external pure returns (uint80) {
+        return uint80((uint256(phaseId) << 64) | aggregatorRoundId);
     }
 }

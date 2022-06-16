@@ -3,11 +3,12 @@ pragma solidity 0.7.6;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
 import { IPriceFeedV2 } from "./interface/IPriceFeedV2.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV2 is IPriceFeedV2, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV2 is IChainlinkPriceFeed, IPriceFeedV2, BlockContext, CachedTwap {
     using Address for address;
 
     AggregatorV3Interface private immutable _aggregator;
@@ -36,6 +37,25 @@ contract ChainlinkPriceFeedV2 is IPriceFeedV2, BlockContext, CachedTwap {
 
     function decimals() external view override returns (uint8) {
         return _aggregator.decimals();
+    }
+
+    function getAggregator() external view override returns (address) {
+        return address(_aggregator);
+    }
+
+    function getRoundData(uint80 roundId) external view override returns (uint256, uint256) {
+        // NOTE: aggregator will revert if roundId is invalid (but there might not be a revert message sometimes)
+        // will return (roundId, 0, 0, 0, roundId) if round is not complete (not existed yet)
+        // https://docs.chain.link/docs/historical-price-data/
+        (, int256 price, , uint256 updatedAt, ) = _aggregator.getRoundData(roundId);
+
+        // CPF_IP: Invalid Price
+        require(price > 0, "CPF_IP");
+
+        // CPF_RINC: Round Is Not Complete
+        require(updatedAt > 0, "CPF_RINC");
+
+        return (uint256(price), updatedAt);
     }
 
     function getPrice(uint256 interval) external view override returns (uint256) {
