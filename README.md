@@ -32,3 +32,9 @@ npm run test
 ## Changelog
 
 See [CHANGELOG](https://github.com/perpetual-protocol/perp-oracle-contract/blob/main/CHANGELOG.md).
+
+
+---
+
+> If any features/functionalities described in the Perpetual Protocol documentation, code comments, marketing, community discussion or announcements, pre-production or testing code, or other non-production-code sources, vary or differ from the code used in production, in case of any dispute, the code used in production shall prevail.
+
