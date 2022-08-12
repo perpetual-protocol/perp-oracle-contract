@@ -82,6 +82,7 @@ abstract contract SafeOwnableNonUpgradable is Context {
     /**
      * @dev Returns the candidate that can become the owner.
      */
+    /* solhint-disable ordering */
     function candidate() external view returns (address) {
         return _candidate;
     }

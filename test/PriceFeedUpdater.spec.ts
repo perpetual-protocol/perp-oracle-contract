@@ -19,6 +19,7 @@ import {
     TestAggregatorV3__factory
 } from "../typechain"
 import {Wallet} from "ethers";
+import {parseEther} from "ethers/lib/utils";
 
 chai.use(smock.matchers);
 
@@ -31,7 +32,7 @@ interface PriceFeedUpdaterFixture {
     alice: Wallet
 }
 
-describe.only("PriceFeedUpdater Spec", () => {
+describe("PriceFeedUpdater Spec", () => {
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader()
     let fixture: PriceFeedUpdaterFixture;
 
@@ -78,6 +79,16 @@ describe.only("PriceFeedUpdater Spec", () => {
         const {ethPriceFeed, btcPriceFeed, priceFeedUpdater} = fixture;
         const priceFeeds = await priceFeedUpdater.getPriceFeeds();
         expect(priceFeeds).deep.equals([ethPriceFeed.address, btcPriceFeed.address])
+    })
+
+    it("force error, when someone sent eth to contract", async () => {
+        const { alice, priceFeedUpdater} = fixture;
+        const tx = alice.sendTransaction({
+            to: priceFeedUpdater.address,
+            value: parseEther("0.1"),
+            gasLimit: 150000  // Give gas limit to force run transaction without dry run
+        });
+        await expect(tx).to.be.reverted;
     })
 
     describe("When setPriceFeed", () => {
