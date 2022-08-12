@@ -8,7 +8,7 @@ import { SafeOwnableNonUpgradable } from "./base/SafeOwnableNonUpgradable.sol";
 contract PriceFeedUpdater is SafeOwnableNonUpgradable {
     using Address for address;
 
-    address[] public priceFeeds;
+    address[] internal _priceFeeds;
 
     constructor(address[] memory priceFeedsArg) {
         setPriceFeeds(priceFeedsArg);
@@ -20,12 +20,16 @@ contract PriceFeedUpdater is SafeOwnableNonUpgradable {
             require(priceFeedsArg[i].isContract(), "PFU_PFANC");
         }
 
-        priceFeeds = priceFeedsArg;
+        _priceFeeds = priceFeedsArg;
+    }
+
+    function getPriceFeeds() external view returns (address[] memory) {
+        return _priceFeeds;
     }
 
     fallback() external {
-        for (uint256 i = 0; i < priceFeeds.length; i++) {
-            try IPriceFeedUpdate(priceFeeds[i]).update() {} catch {}
+        for (uint256 i = 0; i < _priceFeeds.length; i++) {
+            try IPriceFeedUpdate(_priceFeeds[i]).update() {} catch {}
         }
     }
 }
