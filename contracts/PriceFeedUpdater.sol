@@ -11,7 +11,12 @@ contract PriceFeedUpdater is SafeOwnableNonUpgradable {
     address[] internal _priceFeeds;
 
     constructor(address[] memory priceFeedsArg) {
-        setPriceFeeds(priceFeedsArg);
+        // PFU_PFANC: price feed address is not contract
+        for (uint256 i = 0; i < priceFeedsArg.length; i++) {
+            require(priceFeedsArg[i].isContract(), "PFU_PFANC");
+        }
+
+        _priceFeeds = priceFeedsArg;
     }
 
     //
@@ -34,18 +39,5 @@ contract PriceFeedUpdater is SafeOwnableNonUpgradable {
 
     function getPriceFeeds() external view returns (address[] memory) {
         return _priceFeeds;
-    }
-
-    //
-    // PUBLIC NON-VIEW
-    //
-
-    function setPriceFeeds(address[] memory priceFeedsArg) public onlyOwner {
-        // PFU_PFANC: price feed address is not contract
-        for (uint256 i = 0; i < priceFeedsArg.length; i++) {
-            require(priceFeedsArg[i].isContract(), "PFU_PFANC");
-        }
-
-        _priceFeeds = priceFeedsArg;
     }
 }
