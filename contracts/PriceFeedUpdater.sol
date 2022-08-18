@@ -3,9 +3,8 @@ pragma solidity 0.7.6;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPriceFeedUpdate } from "./interface/IPriceFeedUpdate.sol";
-import { SafeOwnableNonUpgradable } from "./base/SafeOwnableNonUpgradable.sol";
 
-contract PriceFeedUpdater is SafeOwnableNonUpgradable {
+contract PriceFeedUpdater {
     using Address for address;
 
     address[] internal _priceFeeds;
