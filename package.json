@@ -1,7 +1,7 @@
 {
   "name": "@perp/perp-oracle-contract",
-  "version": "0.4.3",
-  "description": "Perpetual Protocol Curie (v2) oracle contracts - v0.3.4 is not an audited version",
+  "version": "0.5.0",
+  "description": "Perpetual Protocol Curie (v2) oracle contracts - v0.5.0 is not an audited version",
   "license": "GPL-3.0-or-later",
   "author": {
     "name": "Perpetual Protocol",
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@chainlink/contracts": "0.1.7",
-    "@defi-wonderland/smock": "2.0.7",
+    "@defi-wonderland/smock": "2.2.0",
     "@nomiclabs/hardhat-ethers": "2.0.5",
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@openzeppelin/contracts": "3.4.0",
