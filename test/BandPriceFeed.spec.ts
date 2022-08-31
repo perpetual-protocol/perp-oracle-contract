@@ -1,31 +1,35 @@
-import { MockContract, smock } from "@defi-wonderland/smock"
+import { smock } from "@defi-wonderland/smock"
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import { BandPriceFeed, TestStdReference, TestStdReference__factory } from "../typechain"
+import TestStdReferenceJson from "../artifacts/contracts/test/TestStdReference.sol/TestStdReference.json"
+import {deployMockContract, MockContract} from "ethereum-waffle";
 
 interface BandPriceFeedFixture {
     bandPriceFeed: BandPriceFeed
-    bandReference: MockContract<TestStdReference>
+    bandReference: MockContract,
     baseAsset: string
 }
 
-async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
+async function bandPriceFeedFixture([admin]): Promise<BandPriceFeedFixture> {
     const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference")
     const testStdReference = await testStdReferenceFactory.deploy()
 
+    const mockTestStdReference = await deployMockContract(admin, TestStdReferenceJson.abi);
+
     const baseAsset = "ETH"
     const bandPriceFeedFactory = await ethers.getContractFactory("BandPriceFeed")
-    const bandPriceFeed = (await bandPriceFeedFactory.deploy(testStdReference.address, baseAsset, 900)) as BandPriceFeed
+    const bandPriceFeed = (await bandPriceFeedFactory.deploy(mockTestStdReference.address, baseAsset, 900)) as BandPriceFeed
 
-    return { bandPriceFeed, bandReference: testStdReference, baseAsset }
+    return { bandPriceFeed, bandReference: mockTestStdReference, baseAsset }
 }
 
 describe("BandPriceFeed/CumulativeTwap Spec", () => {
     const [admin] = waffle.provider.getWallets()
     const loadFixture: ReturnType<typeof waffle.createFixtureLoader> = waffle.createFixtureLoader([admin])
     let bandPriceFeed: BandPriceFeed
-    let bandReference: MockContract<TestStdReference>
+    let bandReference: MockContract
     let currentTime: number
     let roundData: any[]
 
@@ -55,11 +59,12 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             currentTime = (await waffle.provider.getBlock("latest")).timestamp
         })
 
-        it("update price once", async () => {
+        it.only("update price once", async () => {
             roundData.push([parseEther("400"), currentTime, currentTime])
-            bandReference.getReferenceData.returns(() => {
-                return roundData[roundData.length - 1]
-            })
+            // bandReference.getReferenceData.returns(() => {
+            //     return roundData[roundData.length - 1]
+            // })
+            await bandReference.mock.getReferenceData.returns(roundData[roundData.length - 1])
 
             expect(await bandPriceFeed.update())
                 .to.be.emit(bandPriceFeed, "PriceUpdated")
