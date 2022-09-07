@@ -14,14 +14,15 @@ interface ChainlinkPriceFeedFixture {
 }
 
 async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
-    const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3")
+    const [admin] = await ethers.getSigners();
+    const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3", admin)
     const aggregator = await aggregatorFactory.deploy()
     aggregator.decimals.returns(() => 18)
 
     const chainlinkPriceFeedFactory = await ethers.getContractFactory("ChainlinkPriceFeedV2")
     const chainlinkPriceFeed = (await chainlinkPriceFeedFactory.deploy(aggregator.address, 900)) as ChainlinkPriceFeedV2
 
-    const aggregatorFactory2 = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3")
+    const aggregatorFactory2 = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3", admin)
     const aggregator2 = await aggregatorFactory2.deploy()
     aggregator2.decimals.returns(() => 8)
 

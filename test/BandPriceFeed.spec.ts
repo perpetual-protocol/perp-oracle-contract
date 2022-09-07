@@ -11,7 +11,8 @@ interface BandPriceFeedFixture {
 }
 
 async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
-    const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference")
+    const [admin] = await ethers.getSigners();
+    const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference", admin)
     const testStdReference = await testStdReferenceFactory.deploy()
 
     const baseAsset = "ETH"
