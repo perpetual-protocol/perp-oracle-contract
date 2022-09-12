@@ -12,7 +12,8 @@ interface EmergencyPriceFeedFixture {
 }
 
 async function emergencyPriceFeedFixture(): Promise<EmergencyPriceFeedFixture> {
-    const uniswapV3Pool = await smock.fake<UniswapV3Pool>("UniswapV3Pool")
+    const [admin] = await ethers.getSigners();
+    const uniswapV3Pool = await smock.fake<UniswapV3Pool>("UniswapV3Pool", admin)
 
     const emergencyPriceFeedFactory = await ethers.getContractFactory("EmergencyPriceFeed")
     const emergencyPriceFeed = (await emergencyPriceFeedFactory.deploy(uniswapV3Pool.address)) as EmergencyPriceFeed

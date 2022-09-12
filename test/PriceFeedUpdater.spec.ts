@@ -1,6 +1,5 @@
 import { MockContract, smock } from "@defi-wonderland/smock"
 import chai, { expect } from "chai"
-import { Wallet } from "ethers"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import {
@@ -9,6 +8,7 @@ import {
     PriceFeedUpdater,
     TestAggregatorV3__factory,
 } from "../typechain"
+import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers)
 
@@ -16,8 +16,8 @@ interface PriceFeedUpdaterFixture {
     ethPriceFeed: MockContract<ChainlinkPriceFeedV2>
     btcPriceFeed: MockContract<ChainlinkPriceFeedV2>
     priceFeedUpdater: PriceFeedUpdater
-    admin: Wallet
-    alice: Wallet
+    admin: SignerWithAddress
+    alice: SignerWithAddress
 }
 
 describe("PriceFeedUpdater Spec", () => {
@@ -42,12 +42,12 @@ describe("PriceFeedUpdater Spec", () => {
     }
 
     async function createFixture(): Promise<PriceFeedUpdaterFixture> {
-        const [admin, alice] = waffle.provider.getWallets()
+        const [admin, alice] = await ethers.getSigners();
 
-        const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3")
+        const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3", admin)
         const aggregator = await aggregatorFactory.deploy()
 
-        const chainlinkPriceFeedV2Factory = await smock.mock<ChainlinkPriceFeedV2__factory>("ChainlinkPriceFeedV2")
+        const chainlinkPriceFeedV2Factory = await smock.mock<ChainlinkPriceFeedV2__factory>("ChainlinkPriceFeedV2", admin)
         const ethPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 900)
         const btcPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 900)
 
