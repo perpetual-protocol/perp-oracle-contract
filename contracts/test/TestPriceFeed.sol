@@ -2,15 +2,18 @@
 pragma solidity 0.7.6;
 
 import { IPriceFeedV2 } from "../interface/IPriceFeedV2.sol";
+import { IPriceFeed } from "../interface/IPriceFeed.sol";
 
 contract TestPriceFeed {
-    address public chainlink;
+    address public chainlinkV1;
+    address public chainlinkV2;
     address public bandProtocol;
 
     uint256 public currentPrice;
 
-    constructor(address _chainlink, address _bandProtocol) {
-        chainlink = _chainlink;
+    constructor(address _chainlinkV1, address _chainlinkV2, address _bandProtocol) {
+        chainlinkV1 = _chainlinkV1;
+        chainlinkV2 = _chainlinkV2;
         bandProtocol = _bandProtocol;
         currentPrice = 10;
     }
@@ -18,32 +21,28 @@ contract TestPriceFeed {
     //
     // for gas usage testing
     //
-    function fetchChainlinkPrice(uint256 interval) external {
-        for (uint256 i = 0; i < 17; i++) {
-            IPriceFeedV2(chainlink).getPrice(interval);
-        }
-        currentPrice = IPriceFeedV2(chainlink).getPrice(interval);
+    function fetchChainlinkV2Price(uint256 interval) external {
+        currentPrice = IPriceFeedV2(chainlinkV2).getPrice(interval);
+    }
+
+    function fetchChainlinkV1Price(uint256 interval) external {
+        currentPrice = IPriceFeed(chainlinkV1).getPrice(interval);
     }
 
     function fetchBandProtocolPrice(uint256 interval) external {
-        for (uint256 i = 0; i < 17; i++) {
-            IPriceFeedV2(bandProtocol).getPrice(interval);
-        }
         currentPrice = IPriceFeedV2(bandProtocol).getPrice(interval);
     }
 
-    function cachedChainlinkPrice(uint256 interval) external {
-        for (uint256 i = 0; i < 17; i++) {
-            IPriceFeedV2(chainlink).cacheTwap(interval);
-        }
-        currentPrice = IPriceFeedV2(chainlink).cacheTwap(interval);
+    function cachedChainlinkV2Price(uint256 interval) external {
+        try IPriceFeedV2(chainlinkV2).cacheTwap(interval) {} catch {}
+    }
+
+    function cachedChainlinkV2PriceWithoutTry(uint256 interval) external {
+        IPriceFeedV2(chainlinkV2).cacheTwap(interval);
     }
 
     function cachedBandProtocolPrice(uint256 interval) external {
-        for (uint256 i = 0; i < 17; i++) {
-            IPriceFeedV2(bandProtocol).cacheTwap(interval);
-        }
-        currentPrice = IPriceFeedV2(bandProtocol).cacheTwap(interval);
+        try IPriceFeedV2(bandProtocol).cacheTwap(interval) {} catch {}
     }
 
     //
