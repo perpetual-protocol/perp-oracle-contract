@@ -6,10 +6,10 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
+import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 
-contract ChainlinkPriceFeedV3 is BlockContext {
+contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
@@ -22,6 +22,8 @@ contract ChainlinkPriceFeedV3 is BlockContext {
         LessThanEqualToZero,
         PotentialOutlier
     }
+
+    uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
 
     AggregatorV3Interface internal immutable _aggregator;
 
@@ -37,14 +39,6 @@ contract ChainlinkPriceFeedV3 is BlockContext {
 
     uint256 internal _lastValidTime;
 
-    struct ChainlinkResponse {
-        uint80 roundId;
-        int256 answer;
-        uint256 updatedAt;
-        bool success;
-        uint8 decimals;
-    }
-
     constructor(
         AggregatorV3Interface aggregator,
         uint256 timeout,
@@ -58,6 +52,9 @@ contract ChainlinkPriceFeedV3 is BlockContext {
 
         _aggregator = aggregator;
 
+        // CPF_IODR: Invalid outlier deviation ratio
+        require(outlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
+
         _outlierDeviationRatio = outlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;
@@ -65,8 +62,8 @@ contract ChainlinkPriceFeedV3 is BlockContext {
         _timeout = timeout;
     }
 
-    function isBroken() internal view returns (bool) {
-        return _lastValidTime + _timeout > _blockTimestamp();
+    function isBroken() external view override returns (bool) {
+        return _lastValidTime.add(_timeout) > _blockTimestamp();
     }
 
     function _isFreeze(ChainlinkResponse memory response) internal view returns (FreezeReason) {
@@ -101,7 +98,7 @@ contract ChainlinkPriceFeedV3 is BlockContext {
     }
 
     function _isOutlier(uint256 price) internal view returns (bool) {
-        uint256 diff = _lastValidPrice >= price ? -price : price - _lastValidPrice;
+        uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
         uint256 deviation = diff.div(_lastValidPrice);
         return deviation > _outlierDeviationRatio;
     }
@@ -114,7 +111,7 @@ contract ChainlinkPriceFeedV3 is BlockContext {
         return address(_aggregator);
     }
 
-    function cachePrice() external returns (uint256) {
+    function cachePrice() external override returns (uint256) {
         ChainlinkResponse memory response = _getChainlinkData();
 
         if (_lastValidTime == response.updatedAt) {
@@ -124,12 +121,18 @@ contract ChainlinkPriceFeedV3 is BlockContext {
         FreezeReason freezeReason = _isFreeze(response);
         if (freezeReason != FreezeReason.Normal) {
             if (freezeReason == FreezeReason.PotentialOutlier) {
-                if (_lastValidTime + _outlierCoolDownPeriod > _blockTimestamp()) {
+                if (_lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()) {
                     uint256 latestPrice = uint256(response.answer);
                     if (latestPrice > _lastValidPrice) {
-                        _lastValidPrice = _lastValidPrice * (1 + _outlierDeviationRatio);
+                        _lastValidPrice = _mulRatio(
+                            _lastValidPrice,
+                            _ONE_HUNDRED_PERCENT_RATIO + _outlierDeviationRatio
+                        );
                     } else {
-                        _lastValidPrice = _lastValidPrice * (1 - _outlierDeviationRatio);
+                        _lastValidPrice = _mulRatio(
+                            _lastValidPrice,
+                            _ONE_HUNDRED_PERCENT_RATIO - _outlierDeviationRatio
+                        );
                     }
                     _lastValidTime = _blockTimestamp();
                 }
@@ -140,6 +143,10 @@ contract ChainlinkPriceFeedV3 is BlockContext {
         _lastValidPrice = uint256(response.answer);
         _lastValidTime = response.updatedAt;
 
+        return _lastValidPrice;
+    }
+
+    function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
 
@@ -167,5 +174,9 @@ contract ChainlinkPriceFeedV3 is BlockContext {
             // If call to Chainlink aggregator reverts, return a zero response with success = false
             return chainlinkResponse;
         }
+    }
+
+    function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
+        return value.mul(ratio).div(1e6);
     }
 }
