@@ -34,7 +34,7 @@ contract PriceFeedDispatcher is BlockContext {
 
     function dispatchPrice() external returns (uint256) {
         uint256 chainlinkPrice = IPriceFeedV3(_chainlinkPriceFeed).cachePrice();
-        if (!IPriceFeedV3(_chainlinkPriceFeed).isBroken() && _status == Status.Chainlink) {
+        if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
             return chainlinkPrice;
         } else if (_uniswapV3PriceFeed != address(0)) {
             _status = Status.UniswapV3;
@@ -45,7 +45,7 @@ contract PriceFeedDispatcher is BlockContext {
 
     function getDispatchedPrice() external view returns (uint256) {
         uint256 chainlinkPrice = IPriceFeedV3(_chainlinkPriceFeed).getLastValidPrice();
-        if (!IPriceFeedV3(_chainlinkPriceFeed).isBroken() && _status == Status.Chainlink) {
+        if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
             return chainlinkPrice;
         } else if (_uniswapV3PriceFeed != address(0)) {
             return IPriceFeedV3(_uniswapV3PriceFeed).getLastValidPrice();

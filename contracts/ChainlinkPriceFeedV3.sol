@@ -62,7 +62,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         _timeout = timeout;
     }
 
-    function isBroken() external view override returns (bool) {
+    function isTimedOut() external view override returns (bool) {
         return _lastValidTime.add(_timeout) > _blockTimestamp();
     }
 
