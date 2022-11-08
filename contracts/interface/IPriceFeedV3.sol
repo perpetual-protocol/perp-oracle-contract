@@ -17,5 +17,5 @@ interface IPriceFeedV3 {
 
     function getLastValidPrice() external view returns (uint256);
 
-    function isBroken() external view returns (bool);
+    function isTimedOut() external view returns (bool);
 }
