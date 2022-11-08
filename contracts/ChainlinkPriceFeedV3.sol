@@ -49,7 +49,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     constructor(
         AggregatorV3Interface aggregator,
         uint256 timeout,
-        uint24 outlierDeviationRatio,
+        uint24 maxOutlierDeviationRatio,
         uint256 outlierCoolDownPeriod
     ) {
         // CPF_ANC: Aggregator address is not contract
@@ -57,8 +57,8 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         _aggregator = aggregator;
 
         // CPF_IODR: Invalid outlier deviation ratio
-        require(outlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
-        _maxOutlierDeviationRatio = outlierDeviationRatio;
+        require(maxOutlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
+        _maxOutlierDeviationRatio = maxOutlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;
         _timeout = timeout;
