@@ -13,13 +13,13 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
-    enum FreezeReason {
-        Normal,
+    enum FreezedReason {
+        NotFreezed,
         NoResponse,
         IncorrectDecimals,
-        NoRound,
-        IncorrectTime,
-        LessThanEqualToZero,
+        NoRoundId,
+        InvalidTime,
+        NonPositiveAnswer,
         PotentialOutlier
     }
 
@@ -66,30 +66,21 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             return _lastValidPrice;
         }
 
-        FreezeReason freezeReason = _getFreezedReason(response);
-        if (freezeReason != FreezeReason.Normal) {
-            if (freezeReason == FreezeReason.PotentialOutlier) {
-                if (_lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()) {
-                    uint256 latestPrice = uint256(response.answer);
-                    if (latestPrice > _lastValidPrice) {
-                        _lastValidPrice = _mulRatio(
-                            _lastValidPrice,
-                            _ONE_HUNDRED_PERCENT_RATIO + _outlierDeviationRatio
-                        );
-                    } else {
-                        _lastValidPrice = _mulRatio(
-                            _lastValidPrice,
-                            _ONE_HUNDRED_PERCENT_RATIO - _outlierDeviationRatio
-                        );
-                    }
-                    _lastValidTime = _blockTimestamp();
-                }
-            }
-            return _lastValidPrice;
+        FreezedReason freezedReason = _getFreezedReason(response);
+        if (freezedReason == FreezedReason.NotFreezed) {
+            _lastValidPrice = uint256(response.answer);
+            _lastValidTime = response.updatedAt;
+        } else if (
+            freezedReason == FreezedReason.PotentialOutlier &&
+            _lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()
+        ) {
+            uint24 maxDeviatedRatio =
+                uint256(response.answer) > _lastValidPrice
+                    ? _ONE_HUNDRED_PERCENT_RATIO + _outlierDeviationRatio
+                    : _ONE_HUNDRED_PERCENT_RATIO - _outlierDeviationRatio;
+            _lastValidPrice = _mulRatio(_lastValidPrice, maxDeviatedRatio);
+            _lastValidTime = _blockTimestamp();
         }
-
-        _lastValidPrice = uint256(response.answer);
-        _lastValidTime = response.updatedAt;
 
         return _lastValidPrice;
     }
@@ -144,35 +135,35 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         }
     }
 
-    function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezeReason) {
+    function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezedReason) {
         /*
         1. no response
         2. incorrect decimals
-        3. no round
-        4. no timestamp or it’s future time
-        5. no positive or 0 price
+        3. no roundId
+        4. no timestamp or it’s invalid (in the future)
+        5. none positive price
         6. outlier
         */
         if (!response.success) {
-            return FreezeReason.NoResponse;
+            return FreezedReason.NoResponse;
         }
         if (response.decimals != _decimals) {
-            return FreezeReason.IncorrectDecimals;
+            return FreezedReason.IncorrectDecimals;
         }
         if (response.roundId == 0) {
-            return FreezeReason.NoRound;
+            return FreezedReason.NoRoundId;
         }
         if (response.updatedAt == 0 || response.updatedAt > _blockTimestamp()) {
-            return FreezeReason.IncorrectTime;
+            return FreezedReason.InvalidTime;
         }
         if (response.answer <= 0) {
-            return FreezeReason.LessThanEqualToZero;
+            return FreezedReason.NonPositiveAnswer;
         }
         if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
-            return FreezeReason.PotentialOutlier;
+            return FreezedReason.PotentialOutlier;
         }
 
-        return FreezeReason.Normal;
+        return FreezedReason.NotFreezed;
     }
 
     function _isOutlier(uint256 price) internal view returns (bool) {
