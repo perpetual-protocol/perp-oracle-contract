@@ -29,7 +29,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
 
     uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint8 internal immutable _decimals;
-    uint24 internal immutable _outlierDeviationRatio;
+    uint24 internal immutable _maxOutlierDeviationRatio;
     uint256 internal immutable _outlierCoolDownPeriod;
     uint256 internal immutable _timeout;
     uint256 internal _lastValidPrice;
@@ -52,7 +52,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
 
         // CPF_IODR: Invalid outlier deviation ratio
         require(outlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
-        _outlierDeviationRatio = outlierDeviationRatio;
+        _maxOutlierDeviationRatio = outlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;
         _timeout = timeout;
@@ -74,11 +74,11 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             freezedReason == FreezedReason.PotentialOutlier &&
             _lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()
         ) {
-            uint24 maxDeviatedRatio =
+            uint24 deviationRatio =
                 uint256(response.answer) > _lastValidPrice
-                    ? _ONE_HUNDRED_PERCENT_RATIO + _outlierDeviationRatio
-                    : _ONE_HUNDRED_PERCENT_RATIO - _outlierDeviationRatio;
-            _lastValidPrice = _mulRatio(_lastValidPrice, maxDeviatedRatio);
+                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
+                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+            _lastValidPrice = _mulRatio(_lastValidPrice, deviationRatio);
             _lastValidTime = _blockTimestamp();
         }
 
@@ -169,7 +169,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     function _isOutlier(uint256 price) internal view returns (bool) {
         uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
         uint256 deviation = diff.div(_lastValidPrice);
-        return deviation > _outlierDeviationRatio;
+        return deviation >= _maxOutlierDeviationRatio;
     }
 
     function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
