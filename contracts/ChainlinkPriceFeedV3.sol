@@ -104,7 +104,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         return _lastValidPrice;
     }
 
-    function decimals() external view returns (uint8) {
+    function decimals() external view override returns (uint8) {
         return _decimals;
     }
 
