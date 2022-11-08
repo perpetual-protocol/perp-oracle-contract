@@ -15,6 +15,8 @@ interface IPriceFeedV3 {
     /// @dev Returns the cached index price of the token.
     function cachePrice() external returns (uint256);
 
+    function decimals() external view returns (uint8);
+
     function getLastValidPrice() external view returns (uint256);
 
     function isTimedOut() external view returns (bool);
