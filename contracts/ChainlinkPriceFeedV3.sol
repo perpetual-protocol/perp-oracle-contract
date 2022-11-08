@@ -18,7 +18,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         NoResponse,
         IncorrectDecimals,
         NoRoundId,
-        InvalidTime,
+        InvalidTimestamp,
         NonPositiveAnswer,
         PotentialOutlier
     }
@@ -29,12 +29,18 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
 
     uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint8 internal immutable _decimals;
-    uint24 internal immutable _outlierDeviationRatio;
+    uint24 internal immutable _maxOutlierDeviationRatio;
     uint256 internal immutable _outlierCoolDownPeriod;
     uint256 internal immutable _timeout;
     uint256 internal _lastValidPrice;
     uint256 internal _lastValidTime;
     AggregatorV3Interface internal immutable _aggregator;
+
+    //
+    // EVENT
+    //
+
+    event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
 
     //
     // EXTERNAL NON-VIEW
@@ -43,7 +49,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     constructor(
         AggregatorV3Interface aggregator,
         uint256 timeout,
-        uint24 outlierDeviationRatio,
+        uint24 maxOutlierDeviationRatio,
         uint256 outlierCoolDownPeriod
     ) {
         // CPF_ANC: Aggregator address is not contract
@@ -51,8 +57,8 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         _aggregator = aggregator;
 
         // CPF_IODR: Invalid outlier deviation ratio
-        require(outlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
-        _outlierDeviationRatio = outlierDeviationRatio;
+        require(maxOutlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
+        _maxOutlierDeviationRatio = maxOutlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;
         _timeout = timeout;
@@ -74,14 +80,15 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             freezedReason == FreezedReason.PotentialOutlier &&
             _lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()
         ) {
-            uint24 maxDeviatedRatio =
+            uint24 deviationRatio =
                 uint256(response.answer) > _lastValidPrice
-                    ? _ONE_HUNDRED_PERCENT_RATIO + _outlierDeviationRatio
-                    : _ONE_HUNDRED_PERCENT_RATIO - _outlierDeviationRatio;
-            _lastValidPrice = _mulRatio(_lastValidPrice, maxDeviatedRatio);
+                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
+                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+            _lastValidPrice = _mulRatio(_lastValidPrice, deviationRatio);
             _lastValidTime = _blockTimestamp();
         }
 
+        emit PriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
         return _lastValidPrice;
     }
 
@@ -153,8 +160,8 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         if (response.roundId == 0) {
             return FreezedReason.NoRoundId;
         }
-        if (response.updatedAt == 0 || response.updatedAt > _blockTimestamp()) {
-            return FreezedReason.InvalidTime;
+        if (response.updatedAt == 0 || response.updatedAt < _lastValidTime || response.updatedAt > _blockTimestamp()) {
+            return FreezedReason.InvalidTimestamp;
         }
         if (response.answer <= 0) {
             return FreezedReason.NonPositiveAnswer;
@@ -169,7 +176,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     function _isOutlier(uint256 price) internal view returns (bool) {
         uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
         uint256 deviation = diff.div(_lastValidPrice);
-        return deviation > _outlierDeviationRatio;
+        return deviation >= _maxOutlierDeviationRatio;
     }
 
     function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
