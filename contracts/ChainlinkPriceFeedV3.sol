@@ -23,21 +23,22 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         PotentialOutlier
     }
 
-    uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
+    //
+    // STATE
+    //
 
+    uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
+    uint8 internal immutable _decimals;
+    uint24 internal immutable _outlierDeviationRatio;
+    uint256 internal immutable _outlierCoolDownPeriod;
+    uint256 internal immutable _timeout;
+    uint256 internal _lastValidPrice;
+    uint256 internal _lastValidTime;
     AggregatorV3Interface internal immutable _aggregator;
 
-    uint8 internal immutable _decimals;
-
-    uint24 internal immutable _outlierDeviationRatio;
-
-    uint256 internal immutable _outlierCoolDownPeriod;
-
-    uint256 internal immutable _timeout;
-
-    uint256 internal _lastValidPrice;
-
-    uint256 internal _lastValidTime;
+    //
+    // EXTERNAL NON-VIEW
+    //
 
     constructor(
         AggregatorV3Interface aggregator,
@@ -47,31 +48,15 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     ) {
         // CPF_ANC: Aggregator address is not contract
         require(address(aggregator).isContract(), "CPF_ANC");
-
-        _decimals = aggregator.decimals();
-
         _aggregator = aggregator;
 
         // CPF_IODR: Invalid outlier deviation ratio
         require(outlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
-
         _outlierDeviationRatio = outlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;
-
         _timeout = timeout;
-    }
-
-    function isTimedOut() external view override returns (bool) {
-        return _lastValidTime.add(_timeout) > _blockTimestamp();
-    }
-
-    function decimals() external view returns (uint8) {
-        return _decimals;
-    }
-
-    function getAggregator() external view returns (address) {
-        return address(_aggregator);
+        _decimals = aggregator.decimals();
     }
 
     function cachePrice() external override returns (uint256) {
@@ -109,9 +94,29 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         return _lastValidPrice;
     }
 
+    //
+    // EXTERNAL VIEW
+    //
+
+    function getAggregator() external view returns (address) {
+        return address(_aggregator);
+    }
+
     function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
+
+    function decimals() external view returns (uint8) {
+        return _decimals;
+    }
+
+    function isTimedOut() external view override returns (bool) {
+        return _lastValidTime.add(_timeout) > _blockTimestamp();
+    }
+
+    //
+    // INTERNAL VIEW
+    //
 
     function _getChainlinkData() internal view returns (ChainlinkResponse memory chainlinkResponse) {
         try _aggregator.decimals() returns (uint8 decimals) {
@@ -123,9 +128,9 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         try _aggregator.latestRoundData() returns (
             uint80 roundId,
             int256 answer,
-            uint256, /* startedAt */
+            uint256, // startedAt
             uint256 updatedAt,
-            uint80 /* answeredInRound */
+            uint80 // answeredInRound
         ) {
             // If call to Chainlink succeeds, return the response and success = true
             chainlinkResponse.roundId = roundId;
