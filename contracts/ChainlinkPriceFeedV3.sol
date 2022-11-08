@@ -37,6 +37,12 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     AggregatorV3Interface internal immutable _aggregator;
 
     //
+    // EVENT
+    //
+
+    event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
+
+    //
     // EXTERNAL NON-VIEW
     //
 
@@ -82,6 +88,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             _lastValidTime = _blockTimestamp();
         }
 
+        emit PriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
         return _lastValidPrice;
     }
 
