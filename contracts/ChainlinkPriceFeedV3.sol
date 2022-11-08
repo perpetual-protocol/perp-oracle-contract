@@ -18,7 +18,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         NoResponse,
         IncorrectDecimals,
         NoRoundId,
-        InvalidTime,
+        InvalidTimestamp,
         NonPositiveAnswer,
         PotentialOutlier
     }
@@ -153,8 +153,8 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         if (response.roundId == 0) {
             return FreezedReason.NoRoundId;
         }
-        if (response.updatedAt == 0 || response.updatedAt > _blockTimestamp()) {
-            return FreezedReason.InvalidTime;
+        if (response.updatedAt == 0 || response.updatedAt < _lastValidTime || response.updatedAt > _blockTimestamp()) {
+            return FreezedReason.InvalidTimestamp;
         }
         if (response.answer <= 0) {
             return FreezedReason.NonPositiveAnswer;
