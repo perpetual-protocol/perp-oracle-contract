@@ -66,43 +66,6 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         return _lastValidTime.add(_timeout) > _blockTimestamp();
     }
 
-    function _isFreeze(ChainlinkResponse memory response) internal view returns (FreezeReason) {
-        /*
-        1. no response
-        2. incorrect decimals
-        3. no round
-        4. no timestamp or it’s future time
-        5. no positive or 0 price
-        6. outlier
-        */
-        if (!response.success) {
-            return FreezeReason.NoResponse;
-        }
-        if (response.decimals != _decimals) {
-            return FreezeReason.IncorrectDecimals;
-        }
-        if (response.roundId == 0) {
-            return FreezeReason.NoRound;
-        }
-        if (response.updatedAt == 0 || response.updatedAt > _blockTimestamp()) {
-            return FreezeReason.IncorrectTime;
-        }
-        if (response.answer <= 0) {
-            return FreezeReason.LessThanEqualToZero;
-        }
-        if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
-            return FreezeReason.PotentialOutlier;
-        }
-
-        return FreezeReason.Normal;
-    }
-
-    function _isOutlier(uint256 price) internal view returns (bool) {
-        uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
-        uint256 deviation = diff.div(_lastValidPrice);
-        return deviation > _outlierDeviationRatio;
-    }
-
     function decimals() external view returns (uint8) {
         return _decimals;
     }
@@ -118,7 +81,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             return _lastValidPrice;
         }
 
-        FreezeReason freezeReason = _isFreeze(response);
+        FreezeReason freezeReason = _getFreezedReason(response);
         if (freezeReason != FreezeReason.Normal) {
             if (freezeReason == FreezeReason.PotentialOutlier) {
                 if (_lastValidTime.add(_outlierCoolDownPeriod) > _blockTimestamp()) {
@@ -174,6 +137,43 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             // If call to Chainlink aggregator reverts, return a zero response with success = false
             return chainlinkResponse;
         }
+    }
+
+    function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezeReason) {
+        /*
+        1. no response
+        2. incorrect decimals
+        3. no round
+        4. no timestamp or it’s future time
+        5. no positive or 0 price
+        6. outlier
+        */
+        if (!response.success) {
+            return FreezeReason.NoResponse;
+        }
+        if (response.decimals != _decimals) {
+            return FreezeReason.IncorrectDecimals;
+        }
+        if (response.roundId == 0) {
+            return FreezeReason.NoRound;
+        }
+        if (response.updatedAt == 0 || response.updatedAt > _blockTimestamp()) {
+            return FreezeReason.IncorrectTime;
+        }
+        if (response.answer <= 0) {
+            return FreezeReason.LessThanEqualToZero;
+        }
+        if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
+            return FreezeReason.PotentialOutlier;
+        }
+
+        return FreezeReason.Normal;
+    }
+
+    function _isOutlier(uint256 price) internal view returns (bool) {
+        uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
+        uint256 deviation = diff.div(_lastValidPrice);
+        return deviation > _outlierDeviationRatio;
     }
 
     function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
