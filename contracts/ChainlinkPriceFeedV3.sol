@@ -13,16 +13,6 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
-    enum FreezedReason {
-        NotFreezed,
-        NoResponse,
-        IncorrectDecimals,
-        NoRoundId,
-        InvalidTimestamp,
-        NonPositiveAnswer,
-        PotentialOutlier
-    }
-
     //
     // STATE
     //
@@ -35,12 +25,6 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     uint256 internal _lastValidPrice;
     uint256 internal _lastValidTime;
     AggregatorV3Interface internal immutable _aggregator;
-
-    //
-    // EVENT
-    //
-
-    event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
 
     //
     // EXTERNAL NON-VIEW

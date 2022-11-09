@@ -3,7 +3,21 @@ pragma solidity 0.7.6;
 
 import "./IPriceFeed.sol";
 
-interface IPriceFeedV3 {
+interface IPriceFeedV3Event {
+    enum FreezedReason {
+        NotFreezed,
+        NoResponse,
+        IncorrectDecimals,
+        NoRoundId,
+        InvalidTimestamp,
+        NonPositiveAnswer,
+        PotentialOutlier
+    }
+
+    event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
+}
+
+interface IPriceFeedV3 is IPriceFeedV3Event {
     struct ChainlinkResponse {
         uint80 roundId;
         int256 answer;
