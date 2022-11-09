@@ -84,4 +84,70 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         emit PriceUpdated(0, 0, FreezedReason.IncorrectDecimals);
         _chainlinkPriceFeedV3.cachePrice();
     }
+
+    function test_cachePrice_freezedReason_is_NoRoundId() public {
+        uint256 roundId = 0;
+        vm.mockCall(
+            address(_testAggregator),
+            abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
+            abi.encode(roundId, _price, _timestamp, _timestamp, roundId)
+        );
+
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        emit PriceUpdated(0, 0, FreezedReason.NoRoundId);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
+
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_no_time() public {
+        // no time
+        vm.mockCall(
+            address(_testAggregator),
+            abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
+            abi.encode(_roundId, _price, 0, 0, _roundId)
+        );
+
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        emit PriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
+
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_future_time() public {
+        // future time
+        vm.mockCall(
+            address(_testAggregator),
+            abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
+            abi.encode(_roundId, _price, _timestamp + 1, _timestamp + 1, _roundId)
+        );
+
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        emit PriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
+
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_previous_time() public {
+        // <= _lastValidTime
+        _chainlinkPriceFeedV3.cachePrice();
+
+        vm.mockCall(
+            address(_testAggregator),
+            abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
+            abi.encode(_roundId, _price, _timestamp - 1, _timestamp - 1, _roundId)
+        );
+
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        emit PriceUpdated(_price, _timestamp, FreezedReason.InvalidTimestamp);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
+
+    function test_cachePrice_freezedReason_is_NonPositiveAnswer() public {
+        vm.mockCall(
+            address(_testAggregator),
+            abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
+            abi.encode(_roundId, -1, _timestamp, _timestamp, _roundId)
+        );
+
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        emit PriceUpdated(_price, _timestamp, FreezedReason.NonPositiveAnswer);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
 }

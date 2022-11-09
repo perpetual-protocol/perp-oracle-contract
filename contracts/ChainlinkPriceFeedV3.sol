@@ -52,7 +52,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
     function cachePrice() external override returns (uint256) {
         ChainlinkResponse memory response = _getChainlinkData();
 
-        if (_lastValidTime == response.updatedAt) {
+        if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
             return _lastValidPrice;
         }
 
