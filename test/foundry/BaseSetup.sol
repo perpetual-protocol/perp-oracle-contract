@@ -5,6 +5,7 @@ import { TestAggregatorV3 } from "../../contracts/test/TestAggregatorV3.sol";
 import { ChainlinkPriceFeedV3 } from "../../contracts/ChainlinkPriceFeedV3.sol";
 
 contract BaseSetup is Test {
+    uint256 internal constant _timeout = 40 * 60;
     TestAggregatorV3 internal testAggregator;
     ChainlinkPriceFeedV3 internal chainlinkPriceFeedV3;
 
@@ -24,6 +25,6 @@ contract BaseSetup is Test {
     }
 
     function createChainlinkPriceFeedV3() internal returns (ChainlinkPriceFeedV3) {
-        return new ChainlinkPriceFeedV3(testAggregator, 40 * 60, 1e5, 10);
+        return new ChainlinkPriceFeedV3(testAggregator, _timeout, 1e5, 10);
     }
 }
