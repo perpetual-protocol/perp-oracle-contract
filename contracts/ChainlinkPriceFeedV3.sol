@@ -88,6 +88,10 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         return _lastValidPrice;
     }
 
+    function getLastValidTime() external view override returns (uint256) {
+        return _lastValidTime;
+    }
+
     function decimals() external view override returns (uint8) {
         return _decimals;
     }

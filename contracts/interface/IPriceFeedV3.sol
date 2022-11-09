@@ -33,5 +33,7 @@ interface IPriceFeedV3 is IPriceFeedV3Event {
 
     function getLastValidPrice() external view returns (uint256);
 
+    function getLastValidTime() external view returns (uint256);
+
     function isTimedOut() external view returns (bool);
 }
