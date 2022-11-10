@@ -39,7 +39,9 @@ contract ChainlinkPriceFeedV3Broken is ChainlinkPriceFeedV3 {
 }
 
 contract BaseSetup is Test {
-    uint256 internal constant _TIMEOUT = 40 * 60;
+    uint256 internal _timeout = 40 * 60; // 40 mins
+    uint24 internal _maxOutlierDeviationRatio = 1e5; // 10%
+    uint256 internal _outlierCoolDownPeriod = 10; // 10s
 
     TestAggregatorV3 internal _testAggregator;
     ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
@@ -68,7 +70,7 @@ contract BaseSetup is Test {
     }
 
     function _createChainlinkPriceFeedV3() internal returns (ChainlinkPriceFeedV3) {
-        return new ChainlinkPriceFeedV3(_testAggregator, _TIMEOUT, 1e5, 10);
+        return new ChainlinkPriceFeedV3(_testAggregator, _timeout, _maxOutlierDeviationRatio, _outlierCoolDownPeriod);
     }
 
     function _createAggregatorBroken() internal returns (AggregatorV3Broken) {
@@ -78,6 +80,12 @@ contract BaseSetup is Test {
     }
 
     function __createChainlinkPriceFeedV3Broken() internal returns (ChainlinkPriceFeedV3Broken) {
-        return new ChainlinkPriceFeedV3Broken(_aggregatorV3Broken, _TIMEOUT, 1e5, 10);
+        return
+            new ChainlinkPriceFeedV3Broken(
+                _aggregatorV3Broken,
+                _timeout,
+                _maxOutlierDeviationRatio,
+                _outlierCoolDownPeriod
+            );
     }
 }
