@@ -48,18 +48,21 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         assertEq(_chainlinkPriceFeedV3.isTimedOut(), true);
     }
 
-    function test_cachePrice_first_call_with_valid_price() public {
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+    function test_cachePrice_first_time_caching_with_valid_price() public {
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(_price, _timestamp, FreezedReason.NotFreezed);
         assertEq(_chainlinkPriceFeedV3.cachePrice(), _price);
         assertEq(_chainlinkPriceFeedV3.getLastValidPrice(), _price);
+        assertEq(_chainlinkPriceFeedV3.getLastValidTime(), _timestamp);
     }
 
-    function test_cachePrice_should_return__lastValidPrice_when_new_price_is_the_same() public {
+    function test_cachePrice_wont_update_when_the_new_timestamp_is_the_same() public {
         _chainlinkPriceFeedV3.cachePrice();
 
+        // giving a different price but the same timestamp
         _mock_call_latestRoundData(_roundId, 2000 * 1e8, _timestamp);
 
+        // price won't get updated; still the existing _lastValidPrice
         assertEq(_chainlinkPriceFeedV3.cachePrice(), _price);
     }
 
@@ -76,7 +79,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
     function test_cachePrice_freezedReason_is_IncorrectDecimals() public {
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(7));
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(0, 0, FreezedReason.IncorrectDecimals);
         _chainlinkPriceFeedV3.cachePrice();
     }
@@ -84,36 +87,36 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
     function test_cachePrice_freezedReason_is_NoRoundId() public {
         _mock_call_latestRoundData(0, int256(_price), _timestamp);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(0, 0, FreezedReason.NoRoundId);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_no_time() public {
-        // no time
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_zero_timestamp() public {
+        // zero timestamp
         _mock_call_latestRoundData(_roundId, int256(_price), 0);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_future_time() public {
-        // future time
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_future_timestamp() public {
+        // future
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp + 1);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_previous_time() public {
-        // <= _lastValidTime
+    function test_cachePrice_freezedReason_is_InvalidTimestamp_with_past_timestamp() public {
         _chainlinkPriceFeedV3.cachePrice();
 
+        // < _lastValidTime
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp - 1);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(_price, _timestamp, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cachePrice();
     }
@@ -121,7 +124,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
     function test_cachePrice_freezedReason_is_NonPositiveAnswer() public {
         _mock_call_latestRoundData(_roundId, -1, _timestamp);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(0, 0, FreezedReason.NonPositiveAnswer);
         _chainlinkPriceFeedV3.cachePrice();
     }
@@ -134,7 +137,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
         uint256 maxDeviatedPrice = _price.mul(1e6 + _maxOutlierDeviationRatio).div(1e6);
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.PotentialOutlier);
         _chainlinkPriceFeedV3.cachePrice();
     }
@@ -147,8 +150,21 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
         uint256 maxDeviatedPrice = _price.mul(1e6 - _maxOutlierDeviationRatio).div(1e6);
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.PotentialOutlier);
+        _chainlinkPriceFeedV3.cachePrice();
+    }
+
+    function test_cachePrice_freezedReason_is_PotentialOutlier_but_before__outlierCoolDownPeriod() public {
+        _chainlinkPriceFeedV3.cachePrice();
+
+        uint256 timestampBeforeOutlierCoolDownPeriod = _timestampAfterOutlierCoolDownPeriod - 2;
+        _mock_call_latestRoundData(_roundId + 1, 500 * 1e8, timestampBeforeOutlierCoolDownPeriod);
+        vm.warp(timestampBeforeOutlierCoolDownPeriod);
+
+        _expect_emit_PriceUpdated_event();
+        // FreezedReason will be emitted while price & timestamp remain as _lastValidPrice & _lastValidTime
+        emit PriceUpdated(_price, _timestamp, FreezedReason.PotentialOutlier);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
@@ -159,7 +175,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         _mock_call_latestRoundData(_roundId + 1, price, _timestampAfterOutlierCoolDownPeriod);
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
-        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
+        _expect_emit_PriceUpdated_event();
         emit PriceUpdated(uint256(price), _timestampAfterOutlierCoolDownPeriod, FreezedReason.NotFreezed);
         _chainlinkPriceFeedV3.cachePrice();
     }
@@ -174,5 +190,9 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
             abi.encodeWithSelector(_testAggregator.latestRoundData.selector),
             abi.encode(roundId, answer, timestamp, timestamp, roundId)
         );
+    }
+
+    function _expect_emit_PriceUpdated_event() internal {
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
     }
 }
