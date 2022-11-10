@@ -2,7 +2,6 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "forge-std/Test.sol";
-
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./BaseSetup.sol";
 import "../../contracts/interface/IPriceFeedV3.sol";
@@ -10,6 +9,7 @@ import "../../contracts/interface/IPriceFeedV3.sol";
 contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
     using SafeMath for uint256;
 
+    uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint256 internal _timestamp = 10000000;
     uint256 internal _price = 1000 * 1e8;
     uint256 internal _roundId = 1;
@@ -136,7 +136,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         _mock_call_latestRoundData(_roundId + 1, outlier, _timestampAfterOutlierCoolDownPeriod);
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
-        uint256 maxDeviatedPrice = _price.mul(1e6 + _maxOutlierDeviationRatio).div(1e6);
+        uint256 maxDeviatedPrice =
+            _price.mul(_ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
         _expect_emit_PriceUpdated_event();
         emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cachePrice();
@@ -149,7 +150,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         _mock_call_latestRoundData(_roundId + 1, outlier, _timestampAfterOutlierCoolDownPeriod);
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
-        uint256 maxDeviatedPrice = _price.mul(1e6 - _maxOutlierDeviationRatio).div(1e6);
+        uint256 maxDeviatedPrice =
+            _price.mul(_ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
         _expect_emit_PriceUpdated_event();
         emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cachePrice();

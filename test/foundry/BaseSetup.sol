@@ -46,40 +46,37 @@ contract BaseSetup is Test {
     TestAggregatorV3 internal _testAggregator;
     ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
 
+    // for test_cachePrice_freezedReason_is_NoResponse()
     AggregatorV3Broken internal _aggregatorV3Broken;
     ChainlinkPriceFeedV3Broken internal _chainlinkPriceFeedV3Broken;
 
     function setUp() public virtual {
-        _testAggregator = _createTestAggregator();
-        _chainlinkPriceFeedV3 = _createChainlinkPriceFeedV3();
+        _testAggregator = _create_TestAggregator();
+        _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
 
-        _aggregatorV3Broken = _createAggregatorBroken();
-        _chainlinkPriceFeedV3Broken = __createChainlinkPriceFeedV3Broken();
+        _aggregatorV3Broken = _create_AggregatorV3Broken();
+        _chainlinkPriceFeedV3Broken = _create_ChainlinkPriceFeedV3Broken();
 
         vm.clearMockedCalls();
     }
 
-    //
-    // INTERNAL VIEW
-    //
-
-    function _createTestAggregator() internal returns (TestAggregatorV3) {
+    function _create_TestAggregator() internal returns (TestAggregatorV3) {
         TestAggregatorV3 aggregator = new TestAggregatorV3();
         vm.mockCall(address(aggregator), abi.encodeWithSelector(aggregator.decimals.selector), abi.encode(8));
         return aggregator;
     }
 
-    function _createChainlinkPriceFeedV3() internal returns (ChainlinkPriceFeedV3) {
+    function _create_ChainlinkPriceFeedV3() internal returns (ChainlinkPriceFeedV3) {
         return new ChainlinkPriceFeedV3(_testAggregator, _timeout, _maxOutlierDeviationRatio, _outlierCoolDownPeriod);
     }
 
-    function _createAggregatorBroken() internal returns (AggregatorV3Broken) {
+    function _create_AggregatorV3Broken() internal returns (AggregatorV3Broken) {
         AggregatorV3Broken aggregator = new AggregatorV3Broken();
         vm.mockCall(address(aggregator), abi.encodeWithSelector(aggregator.decimals.selector), abi.encode(8));
         return aggregator;
     }
 
-    function __createChainlinkPriceFeedV3Broken() internal returns (ChainlinkPriceFeedV3Broken) {
+    function _create_ChainlinkPriceFeedV3Broken() internal returns (ChainlinkPriceFeedV3Broken) {
         return
             new ChainlinkPriceFeedV3Broken(
                 _aggregatorV3Broken,
