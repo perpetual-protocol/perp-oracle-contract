@@ -147,7 +147,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         );
 
         vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
-        emit PriceUpdated(_price, _timestamp, FreezedReason.NonPositiveAnswer);
+        emit PriceUpdated(0, 0, FreezedReason.NonPositiveAnswer);
         _chainlinkPriceFeedV3.cachePrice();
     }
 }
