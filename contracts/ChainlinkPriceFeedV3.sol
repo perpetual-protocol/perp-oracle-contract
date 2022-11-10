@@ -61,7 +61,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             _lastValidPrice = uint256(response.answer);
             _lastValidTime = response.updatedAt;
         } else if (
-            freezedReason == FreezedReason.PotentialOutlier &&
+            freezedReason == FreezedReason.AnswerIsOutlier &&
             _blockTimestamp() > _lastValidTime.add(_outlierCoolDownPeriod)
         ) {
             uint24 deviationRatio =
@@ -155,7 +155,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             return FreezedReason.NonPositiveAnswer;
         }
         if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
-            return FreezedReason.PotentialOutlier;
+            return FreezedReason.AnswerIsOutlier;
         }
 
         return FreezedReason.NotFreezed;

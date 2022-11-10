@@ -129,7 +129,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_PotentialOutlier_outlier_larger_than__lastValidPrice() public {
+    function test_cachePrice_freezedReason_is_AnswerIsOutlier_outlier_larger_than__lastValidPrice() public {
         _chainlinkPriceFeedV3.cachePrice();
 
         int256 outlier = 2000 * 1e8;
@@ -138,11 +138,11 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
 
         uint256 maxDeviatedPrice = _price.mul(1e6 + _maxOutlierDeviationRatio).div(1e6);
         _expect_emit_PriceUpdated_event();
-        emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.PotentialOutlier);
+        emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_PotentialOutlier_outlier_smaller_than__lastValidPrice() public {
+    function test_cachePrice_freezedReason_is_AnswerIsOutlier_outlier_smaller_than__lastValidPrice() public {
         _chainlinkPriceFeedV3.cachePrice();
 
         int256 outlier = 500 * 1e8;
@@ -151,11 +151,11 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
 
         uint256 maxDeviatedPrice = _price.mul(1e6 - _maxOutlierDeviationRatio).div(1e6);
         _expect_emit_PriceUpdated_event();
-        emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.PotentialOutlier);
+        emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
-    function test_cachePrice_freezedReason_is_PotentialOutlier_but_before__outlierCoolDownPeriod() public {
+    function test_cachePrice_freezedReason_is_AnswerIsOutlier_but_before__outlierCoolDownPeriod() public {
         _chainlinkPriceFeedV3.cachePrice();
 
         uint256 timestampBeforeOutlierCoolDownPeriod = _timestampAfterOutlierCoolDownPeriod - 2;
@@ -164,7 +164,7 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
 
         _expect_emit_PriceUpdated_event();
         // FreezedReason will be emitted while price & timestamp remain as _lastValidPrice & _lastValidTime
-        emit PriceUpdated(_price, _timestamp, FreezedReason.PotentialOutlier);
+        emit PriceUpdated(_price, _timestamp, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cachePrice();
     }
 
