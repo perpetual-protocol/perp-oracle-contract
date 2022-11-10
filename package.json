@@ -33,6 +33,7 @@
   "scripts": {
     "clean": "rm -rf typechain && rm -rf artifacts && rm -rf cache",
     "test": "hardhat test",
+    "foundry-test": "forge test -vvv",
     "build": "hardhat compile",
     "prepare": "husky install",
     "lint": "npm run lint-contracts && npm run lint-tests",
