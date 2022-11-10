@@ -3,7 +3,7 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./BaseSetup.sol";
+import "./Setup.sol";
 import "../../contracts/interface/IPriceFeedV3.sol";
 
 contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
