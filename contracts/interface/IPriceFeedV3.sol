@@ -11,7 +11,7 @@ interface IPriceFeedV3Event {
         NoRoundId,
         InvalidTimestamp,
         NonPositiveAnswer,
-        PotentialOutlier
+        AnswerIsOutlier
     }
 
     event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);

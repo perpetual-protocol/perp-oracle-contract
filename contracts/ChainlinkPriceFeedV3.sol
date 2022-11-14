@@ -61,7 +61,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             _lastValidPrice = uint256(response.answer);
             _lastValidTime = response.updatedAt;
         } else if (
-            freezedReason == FreezedReason.PotentialOutlier &&
+            freezedReason == FreezedReason.AnswerIsOutlier &&
             _blockTimestamp() > _lastValidTime.add(_outlierCoolDownPeriod)
         ) {
             uint24 deviationRatio =
@@ -155,7 +155,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
             return FreezedReason.NonPositiveAnswer;
         }
         if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
-            return FreezedReason.PotentialOutlier;
+            return FreezedReason.AnswerIsOutlier;
         }
 
         return FreezedReason.NotFreezed;
@@ -163,8 +163,8 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
 
     function _isOutlier(uint256 price) internal view returns (bool) {
         uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
-        uint256 deviation = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastValidPrice);
-        return deviation >= _maxOutlierDeviationRatio;
+        uint256 deviationRatio = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastValidPrice);
+        return deviationRatio >= _maxOutlierDeviationRatio;
     }
 
     function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
