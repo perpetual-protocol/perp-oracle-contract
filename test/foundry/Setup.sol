@@ -30,8 +30,9 @@ contract ChainlinkPriceFeedV3Broken is ChainlinkPriceFeedV3 {
         TestAggregatorV3 aggregator,
         uint256 timeout,
         uint24 maxOutlierDeviationRatio,
-        uint256 outlierCoolDownPeriod
-    ) ChainlinkPriceFeedV3(aggregator, timeout, maxOutlierDeviationRatio, outlierCoolDownPeriod) {}
+        uint256 outlierCoolDownPeriod,
+        uint80 twapInterval
+    ) ChainlinkPriceFeedV3(aggregator, timeout, maxOutlierDeviationRatio, outlierCoolDownPeriod, twapInterval) {}
 
     function getFreezedReason() public returns (FreezedReason) {
         return _getFreezedReason(_getChainlinkData());
@@ -42,6 +43,7 @@ contract BaseSetup is Test {
     uint256 internal _timeout = 40 * 60; // 40 mins
     uint24 internal _maxOutlierDeviationRatio = 1e5; // 10%
     uint256 internal _outlierCoolDownPeriod = 10; // 10s
+    uint80 internal _twapInterval = 30 * 60; // 30 mins
 
     TestAggregatorV3 internal _testAggregator;
     ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
@@ -67,7 +69,14 @@ contract BaseSetup is Test {
     }
 
     function _create_ChainlinkPriceFeedV3() internal returns (ChainlinkPriceFeedV3) {
-        return new ChainlinkPriceFeedV3(_testAggregator, _timeout, _maxOutlierDeviationRatio, _outlierCoolDownPeriod);
+        return
+            new ChainlinkPriceFeedV3(
+                _testAggregator,
+                _timeout,
+                _maxOutlierDeviationRatio,
+                _outlierCoolDownPeriod,
+                _twapInterval
+            );
     }
 
     function _create_AggregatorV3Broken() internal returns (AggregatorV3Broken) {
@@ -82,7 +91,8 @@ contract BaseSetup is Test {
                 _aggregatorV3Broken,
                 _timeout,
                 _maxOutlierDeviationRatio,
-                _outlierCoolDownPeriod
+                _outlierCoolDownPeriod,
+                _twapInterval
             );
     }
 }

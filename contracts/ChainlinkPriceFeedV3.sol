@@ -8,8 +8,9 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
 import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
 import { BlockContext } from "./base/BlockContext.sol";
+import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
+contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     using SafeMath for uint256;
     using Address for address;
 
@@ -34,8 +35,9 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         AggregatorV3Interface aggregator,
         uint256 timeout,
         uint24 maxOutlierDeviationRatio,
-        uint256 outlierCoolDownPeriod
-    ) {
+        uint256 outlierCoolDownPeriod,
+        uint80 twapInterval
+    ) CachedTwap(twapInterval) {
         // CPF_ANC: Aggregator address is not contract
         require(address(aggregator).isContract(), "CPF_ANC");
         _aggregator = aggregator;
@@ -49,7 +51,53 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         _decimals = aggregator.decimals();
     }
 
-    function cachePrice() external override returns (uint256) {
+    function cacheTwap(uint256 interval) external override returns (uint256) {
+        _cachePrice();
+
+        if (interval == 0) {
+            return _lastValidPrice;
+        }
+
+        return _cacheTwap(interval, _lastValidPrice, _lastValidTime);
+    }
+
+    //
+    // EXTERNAL VIEW
+    //
+
+    function getAggregator() external view returns (address) {
+        return address(_aggregator);
+    }
+
+    function getLastValidPrice() external view override returns (uint256) {
+        return _lastValidPrice;
+    }
+
+    function getLastValidTime() external view override returns (uint256) {
+        return _lastValidTime;
+    }
+
+    function getCachedTwap(uint256 interval) external view override returns (uint256) {
+        if (interval == 0) {
+            return _lastValidPrice;
+        }
+
+        return _getCachedTwap(interval, _lastValidPrice, _lastValidTime);
+    }
+
+    function decimals() external view override returns (uint8) {
+        return _decimals;
+    }
+
+    function isTimedOut() external view override returns (bool) {
+        return _lastValidTime.add(_timeout) > _blockTimestamp();
+    }
+
+    //
+    // INTERNAL
+    //
+
+    function _cachePrice() internal returns (uint256) {
         ChainlinkResponse memory response = _getChainlinkData();
 
         if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
@@ -75,34 +123,6 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext {
         emit PriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
         return _lastValidPrice;
     }
-
-    //
-    // EXTERNAL VIEW
-    //
-
-    function getAggregator() external view returns (address) {
-        return address(_aggregator);
-    }
-
-    function getLastValidPrice() external view override returns (uint256) {
-        return _lastValidPrice;
-    }
-
-    function getLastValidTime() external view override returns (uint256) {
-        return _lastValidTime;
-    }
-
-    function decimals() external view override returns (uint8) {
-        return _decimals;
-    }
-
-    function isTimedOut() external view override returns (bool) {
-        return _lastValidTime.add(_timeout) > _blockTimestamp();
-    }
-
-    //
-    // INTERNAL VIEW
-    //
 
     function _getChainlinkData() internal view returns (ChainlinkResponse memory chainlinkResponse) {
         try _aggregator.decimals() returns (uint8 decimals) {

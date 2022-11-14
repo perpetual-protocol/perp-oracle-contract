@@ -37,10 +37,10 @@ contract PriceFeedDispatcher is BlockContext {
         _chainlinkPriceFeed = chainlinkPriceFeed;
     }
 
-    function dispatchPrice() external returns (uint256) {
+    function dispatchPrice(uint256 interval) external returns (uint256) {
         uint256 chainlinkPrice =
             _formatValueFromDeciamlsToX10_18(
-                IPriceFeedV3(_chainlinkPriceFeed).cachePrice(),
+                IPriceFeedV3(_chainlinkPriceFeed).cacheTwap(interval),
                 IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
         if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
@@ -56,10 +56,10 @@ contract PriceFeedDispatcher is BlockContext {
     // EXTERNAL
     //
 
-    function getDispatchedPrice() external view returns (uint256) {
+    function getDispatchedPrice(uint256 interval) external view returns (uint256) {
         uint256 chainlinkPrice =
             _formatValueFromDeciamlsToX10_18(
-                IPriceFeedV3(_chainlinkPriceFeed).getLastValidPrice(),
+                IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
                 IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
         if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
