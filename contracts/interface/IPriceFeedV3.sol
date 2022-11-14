@@ -14,7 +14,7 @@ interface IPriceFeedV3Event {
         AnswerIsOutlier
     }
 
-    event PriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
+    event Freezed(FreezedReason freezedReason);
 }
 
 interface IPriceFeedV3 is IPriceFeedV3Event {

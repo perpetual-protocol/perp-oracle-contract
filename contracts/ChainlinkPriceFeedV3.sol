@@ -120,7 +120,10 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
             _lastValidTime = _blockTimestamp();
         }
 
-        emit PriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
+        if (freezedReason != FreezedReason.NotFreezed) {
+            emit Freezed(freezedReason);
+        }
+
         return _lastValidPrice;
     }
 
