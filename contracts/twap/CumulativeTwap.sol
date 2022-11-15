@@ -39,9 +39,10 @@ contract CumulativeTwap is BlockContext {
             return;
         }
 
-        // CT_IT: invalid timestamp
         Observation memory lastObservation = observations[currentObservationIndex];
-        require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
+        if (lastUpdatedTimestamp <= lastObservation.timestamp) {
+            return;
+        }
 
         // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0

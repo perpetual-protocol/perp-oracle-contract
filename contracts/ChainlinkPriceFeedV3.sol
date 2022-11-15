@@ -54,10 +54,6 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     function cacheTwap(uint256 interval) external override returns (uint256) {
         _cachePrice();
 
-        if (interval == 0) {
-            return _lastValidPrice;
-        }
-
         return _cacheTwap(interval, _lastValidPrice, _lastValidTime);
     }
 
