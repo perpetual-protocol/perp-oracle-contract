@@ -17,9 +17,7 @@ contract PriceFeedDispatcher is BlockContext {
     enum Status { Chainlink, UniswapV3 }
 
     Status internal _status = Status.Chainlink;
-
     address internal immutable _uniswapV3PriceFeed;
-
     address internal immutable _chainlinkPriceFeed;
 
     //
@@ -38,18 +36,16 @@ contract PriceFeedDispatcher is BlockContext {
     }
 
     function dispatchPrice(uint256 interval) external returns (uint256) {
-        uint256 chainlinkPrice =
+        if (_isToSwitchToUniswapV3()) {
+            _status = Status.UniswapV3;
+            return _getUniswapV3TwapPriceX10_18();
+        }
+
+        return
             _formatValueFromDeciamlsToX10_18(
                 IPriceFeedV3(_chainlinkPriceFeed).cacheTwap(interval),
                 IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
-        if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
-            return chainlinkPrice;
-        } else if (_uniswapV3PriceFeed != address(0)) {
-            _status = Status.UniswapV3;
-            return _getUniswapV3TwapPriceX10_18();
-        }
-        return chainlinkPrice;
     }
 
     //
@@ -57,17 +53,15 @@ contract PriceFeedDispatcher is BlockContext {
     //
 
     function getDispatchedPrice(uint256 interval) external view returns (uint256) {
-        uint256 chainlinkPrice =
+        if (_isToSwitchToUniswapV3()) {
+            return _getUniswapV3TwapPriceX10_18();
+        }
+
+        return
             _formatValueFromDeciamlsToX10_18(
                 IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
                 IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
-        if (!IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() && _status == Status.Chainlink) {
-            return chainlinkPrice;
-        } else if (_uniswapV3PriceFeed != address(0)) {
-            return _getUniswapV3TwapPriceX10_18();
-        }
-        return chainlinkPrice;
     }
 
     //
@@ -82,6 +76,20 @@ contract PriceFeedDispatcher is BlockContext {
     // INTERNAL
     //
 
+    function _isToSwitchToUniswapV3() internal view returns (bool) {
+        return
+            _uniswapV3PriceFeed != address(0) &&
+            (IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() || _status == Status.UniswapV3);
+    }
+
+    function _getUniswapV3TwapPriceX10_18() internal view returns (uint256) {
+        return
+            _formatValueFromDeciamlsToX10_18(
+                IUniswapV3PriceFeed(_uniswapV3PriceFeed).getPrice(),
+                IUniswapV3PriceFeed(_uniswapV3PriceFeed).decimals()
+            );
+    }
+
     function _formatValueFromDeciamlsToX10_18(uint256 value, uint8 fromDecimals) internal pure returns (uint256) {
         uint8 toDecimals = decimals();
 
@@ -93,13 +101,5 @@ contract PriceFeedDispatcher is BlockContext {
             fromDecimals > toDecimals
                 ? value.div(10**(fromDecimals - toDecimals))
                 : value.mul(10**(toDecimals - fromDecimals));
-    }
-
-    function _getUniswapV3TwapPriceX10_18() internal view returns (uint256) {
-        return
-            _formatValueFromDeciamlsToX10_18(
-                IUniswapV3PriceFeed(_uniswapV3PriceFeed).getPrice(),
-                IUniswapV3PriceFeed(_uniswapV3PriceFeed).decimals()
-            );
     }
 }
