@@ -41,11 +41,7 @@ contract PriceFeedDispatcher is BlockContext {
             return _getUniswapV3TwapPriceX10_18();
         }
 
-        return
-            _formatValueFromDeciamlsToX10_18(
-                IPriceFeedV3(_chainlinkPriceFeed).cacheTwap(interval),
-                IPriceFeedV3(_chainlinkPriceFeed).decimals()
-            );
+        return _getChainlinkTwap(interval);
     }
 
     //
@@ -57,11 +53,7 @@ contract PriceFeedDispatcher is BlockContext {
             return _getUniswapV3TwapPriceX10_18();
         }
 
-        return
-            _formatValueFromDeciamlsToX10_18(
-                IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
-                IPriceFeedV3(_chainlinkPriceFeed).decimals()
-            );
+        return _getChainlinkTwap(interval);
     }
 
     //
@@ -87,6 +79,14 @@ contract PriceFeedDispatcher is BlockContext {
             _formatValueFromDeciamlsToX10_18(
                 IUniswapV3PriceFeed(_uniswapV3PriceFeed).getPrice(),
                 IUniswapV3PriceFeed(_uniswapV3PriceFeed).decimals()
+            );
+    }
+
+    function _getChainlinkTwap(uint256 interval) internal view returns (uint256) {
+        return
+            _formatValueFromDeciamlsToX10_18(
+                IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
+                IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
     }
 
