@@ -9,8 +9,9 @@ import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
 import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
 import { IUniswapV3PriceFeed } from "./interface/IUniswapV3PriceFeed.sol";
 import { BlockContext } from "./base/BlockContext.sol";
+import { Ownable } from "./base/Ownable.sol";
 
-contract PriceFeedDispatcher is BlockContext {
+contract PriceFeedDispatcher is Ownable, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
@@ -41,6 +42,10 @@ contract PriceFeedDispatcher is BlockContext {
         }
 
         return _getChainlinkTwap(interval);
+    }
+
+    function setPriceFeedStatus(Status status) external onlyOwner {
+        _status = status;
     }
 
     //
