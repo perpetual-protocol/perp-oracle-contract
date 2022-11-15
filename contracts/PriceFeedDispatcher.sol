@@ -31,34 +31,29 @@ contract PriceFeedDispatcher is BlockContext {
         require(address(chainlinkPriceFeed).isContract(), "CPF_CNC");
 
         _uniswapV3PriceFeed = uniswapV3PriceFeed;
-
         _chainlinkPriceFeed = chainlinkPriceFeed;
     }
 
     function dispatchPrice(uint256 interval) external returns (uint256) {
         if (_isToSwitchToUniswapV3()) {
             _status = Status.UniswapV3;
-            return _getUniswapV3TwapPriceX10_18();
+            return _getUniswapV3Twap();
         }
 
         return _getChainlinkTwap(interval);
     }
 
     //
-    // EXTERNAL
+    // EXTERNAL VIEW
     //
 
     function getDispatchedPrice(uint256 interval) external view returns (uint256) {
         if (_isToSwitchToUniswapV3()) {
-            return _getUniswapV3TwapPriceX10_18();
+            return _getUniswapV3Twap();
         }
 
         return _getChainlinkTwap(interval);
     }
-
-    //
-    // PUBLIC
-    //
 
     function decimals() public pure returns (uint8) {
         return 18;
@@ -74,9 +69,9 @@ contract PriceFeedDispatcher is BlockContext {
             (IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() || _status == Status.UniswapV3);
     }
 
-    function _getUniswapV3TwapPriceX10_18() internal view returns (uint256) {
+    function _getUniswapV3Twap() internal view returns (uint256) {
         return
-            _formatValueFromDeciamlsToX10_18(
+            _formatFromDecimalsToX10_18(
                 IUniswapV3PriceFeed(_uniswapV3PriceFeed).getPrice(),
                 IUniswapV3PriceFeed(_uniswapV3PriceFeed).decimals()
             );
@@ -84,13 +79,13 @@ contract PriceFeedDispatcher is BlockContext {
 
     function _getChainlinkTwap(uint256 interval) internal view returns (uint256) {
         return
-            _formatValueFromDeciamlsToX10_18(
+            _formatFromDecimalsToX10_18(
                 IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
                 IPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
     }
 
-    function _formatValueFromDeciamlsToX10_18(uint256 value, uint8 fromDecimals) internal pure returns (uint256) {
+    function _formatFromDecimalsToX10_18(uint256 value, uint8 fromDecimals) internal pure returns (uint256) {
         uint8 toDecimals = decimals();
 
         if (fromDecimals == toDecimals) {
