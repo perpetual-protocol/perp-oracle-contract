@@ -64,8 +64,7 @@ contract CumulativeTwap is BlockContext {
     ) internal view returns (uint256) {
         Observation memory latestObservation = observations[currentObservationIndex];
         if (latestObservation.price == 0) {
-            // CT_ND: no data
-            revert("CT_ND");
+            return 0;
         }
 
         uint256 currentTimestamp = _blockTimestamp();
@@ -108,7 +107,8 @@ contract CumulativeTwap is BlockContext {
             );
         }
 
-        return currentCumulativePrice.sub(targetCumulativePrice).div(currentTimestamp - targetTimestamp);
+        uint256 timestampDiff = currentTimestamp - targetTimestamp;
+        return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
 
     function _getSurroundingObservations(uint256 targetTimestamp)
