@@ -38,12 +38,12 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
         uint256 outlierCoolDownPeriod,
         uint80 twapInterval
     ) CachedTwap(twapInterval) {
-        // CPF_ANC: Aggregator address is not contract
+        // CPF_ANC: Aggregator is not contract
         require(address(aggregator).isContract(), "CPF_ANC");
         _aggregator = aggregator;
 
-        // CPF_IODR: Invalid outlier deviation ratio
-        require(maxOutlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IORD");
+        // CPF_IMODR: Invalid maxOutlierDeviationRatio
+        require(maxOutlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IMODR");
         _maxOutlierDeviationRatio = maxOutlierDeviationRatio;
 
         _outlierCoolDownPeriod = outlierCoolDownPeriod;

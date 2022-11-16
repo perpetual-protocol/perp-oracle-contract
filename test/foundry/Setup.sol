@@ -54,11 +54,11 @@ contract BaseSetup is Test {
 
     function setUp() public virtual {
         _testAggregator = _create_TestAggregator();
-        _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
 
         _aggregatorV3Broken = _create_AggregatorV3Broken();
         _chainlinkPriceFeedV3Broken = _create_ChainlinkPriceFeedV3Broken();
 
+        // s.t. _chainlinkPriceFeedV3Broken will revert on decimals()
         vm.clearMockedCalls();
     }
 

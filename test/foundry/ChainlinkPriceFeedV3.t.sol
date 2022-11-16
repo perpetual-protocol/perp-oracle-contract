@@ -6,6 +6,31 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Setup.sol";
 import "../../contracts/interface/IPriceFeedV3.sol";
 import "./interface/ICumulativeEvent.sol";
+import "../../contracts/test/TestAggregatorV3.sol";
+
+contract ChainlinkPriceFeedV3ConstructorTest is BaseSetup {
+    function test_CPF_ANC() public {
+        vm.expectRevert(bytes("CPF_ANC"));
+        _chainlinkPriceFeedV3 = new ChainlinkPriceFeedV3(
+            TestAggregatorV3(0),
+            _timeout,
+            _maxOutlierDeviationRatio,
+            _outlierCoolDownPeriod,
+            _twapInterval
+        );
+    }
+
+    function test_CPF_IMODR() public {
+        vm.expectRevert(bytes("CPF_IMODR"));
+        _chainlinkPriceFeedV3 = new ChainlinkPriceFeedV3(
+            _testAggregator,
+            _timeout,
+            1e7,
+            _outlierCoolDownPeriod,
+            _twapInterval
+        );
+    }
+}
 
 contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSetup {
     using SafeMath for uint256;
@@ -18,9 +43,11 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
 
     function setUp() public virtual override {
         BaseSetup.setUp();
-        vm.warp(_timestamp);
+        // we need Aggregator's decimals() function in the constructor of ChainlinkPriceFeedV3
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(8));
+        _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
 
+        vm.warp(_timestamp);
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp);
     }
 
