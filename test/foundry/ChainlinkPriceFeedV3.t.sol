@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Setup.sol";
 import "../../contracts/interface/IPriceFeedV3.sol";
-import "./interface/ICumulativeEvent.sol";
 import "../../contracts/test/TestAggregatorV3.sol";
 
 contract ChainlinkPriceFeedV3ConstructorTest is BaseSetup {
@@ -32,7 +31,7 @@ contract ChainlinkPriceFeedV3ConstructorTest is BaseSetup {
     }
 }
 
-contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSetup {
+contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, BaseSetup {
     using SafeMath for uint256;
 
     uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
@@ -77,9 +76,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
     }
 
     function test_cacheTwap_first_time_caching_with_valid_price() public {
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(_price, _timestamp, 1);
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.NotFreezed);
 
         assertEq(_chainlinkPriceFeedV3.cacheTwap(0), _price);
         assertEq(_chainlinkPriceFeedV3.getLastValidPrice(), _price);
@@ -97,9 +95,9 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
     }
 
     function test_cacheTwap_freezedReason_is_NoResponse() public {
-        // cannot expect event here bc of foundry's bug
-        // vm.expectEmit(false, false, false, false, address(_chainlinkPriceFeedV3Broken));
-        // emit PriceUpdated(0, 0, FreezedReason.NoResponse);
+        // note that it's _chainlinkPriceFeedV3Broken here, not _chainlinkPriceFeedV3
+        vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3Broken));
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.NoResponse);
 
         assertEq(_chainlinkPriceFeedV3Broken.cacheTwap(0), 0);
         assertEq(_chainlinkPriceFeedV3Broken.getLastValidTime(), 0);
@@ -109,23 +107,16 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
     function test_cacheTwap_freezedReason_is_IncorrectDecimals() public {
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(7));
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(0, 0, 1);
-
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.IncorrectDecimals);
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.IncorrectDecimals);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
     function test_cacheTwap_freezedReason_is_NoRoundId() public {
         _mock_call_latestRoundData(0, int256(_price), _timestamp);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(0, 0, 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.NoRoundId);
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.NoRoundId);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -133,11 +124,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
         // zero timestamp
         _mock_call_latestRoundData(_roundId, int256(_price), 0);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(0, 0, 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.InvalidTimestamp);
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -145,11 +133,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
         // future
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp + 1);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(0, 0, 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.InvalidTimestamp);
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -159,22 +144,16 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
         // < _lastValidTime
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp - 1);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(_price, _timestamp, 2);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.InvalidTimestamp);
+        emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.InvalidTimestamp);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
     function test_cacheTwap_freezedReason_is_NonPositiveAnswer() public {
         _mock_call_latestRoundData(_roundId, -1, _timestamp);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(0, 0, 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.NonPositiveAnswer);
+        emit ChainlinkPriceUpdated(0, 0, FreezedReason.NonPositiveAnswer);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -187,11 +166,12 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
 
         uint256 maxDeviatedPrice =
             _price.mul(_ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, 2);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.AnswerIsOutlier);
+        emit ChainlinkPriceUpdated(
+            maxDeviatedPrice,
+            _timestampAfterOutlierCoolDownPeriod,
+            FreezedReason.AnswerIsOutlier
+        );
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -204,11 +184,12 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
 
         uint256 maxDeviatedPrice =
             _price.mul(_ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(maxDeviatedPrice, _timestampAfterOutlierCoolDownPeriod, 2);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.AnswerIsOutlier);
+        emit ChainlinkPriceUpdated(
+            maxDeviatedPrice,
+            _timestampAfterOutlierCoolDownPeriod,
+            FreezedReason.AnswerIsOutlier
+        );
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -219,12 +200,9 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
         _mock_call_latestRoundData(_roundId + 1, 500 * 1e8, timestampBeforeOutlierCoolDownPeriod);
         vm.warp(timestampBeforeOutlierCoolDownPeriod);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // FreezedReason will be emitted while price & timestamp remain as _lastValidPrice & _lastValidTime
-        // emit PriceUpdated(_price, _timestamp, 2);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit Freezed(FreezedReason.AnswerIsOutlier);
+        // FreezedReason will be emitted while price & timestamp remain as _lastValidPrice & _lastValidTime
+        emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 
@@ -235,9 +213,8 @@ contract ChainlinkPriceFeedV3Test is IPriceFeedV3Event, ICumulativeEvent, BaseSe
         _mock_call_latestRoundData(_roundId + 1, price, _timestampAfterOutlierCoolDownPeriod);
         vm.warp(_timestampAfterOutlierCoolDownPeriod);
 
-        // TODO: when price is zero interval, there's no event
-        // _expect_emit_event_from_ChainlinkPriceFeedV3();
-        // emit PriceUpdated(uint256(price), _timestampAfterOutlierCoolDownPeriod, 2);
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        emit ChainlinkPriceUpdated(uint256(price), _timestampAfterOutlierCoolDownPeriod, FreezedReason.NotFreezed);
         _chainlinkPriceFeedV3.cacheTwap(0);
     }
 

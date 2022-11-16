@@ -14,7 +14,7 @@ interface IPriceFeedV3Event {
         AnswerIsOutlier
     }
 
-    event Freezed(FreezedReason freezedReason);
+    event ChainlinkPriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
 }
 
 interface IPriceFeedV3 is IPriceFeedV3Event {
