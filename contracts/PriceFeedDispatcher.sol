@@ -27,9 +27,9 @@ contract PriceFeedDispatcher is Ownable, BlockContext {
 
     constructor(address uniswapV3PriceFeed, address chainlinkPriceFeed) {
         // PFD_UNC: UniswapV3PriceFeed (has to be) either contract or uninitialized
-        require(uniswapV3PriceFeed == address(0) || address(uniswapV3PriceFeed).isContract(), "CPF_UECOU");
+        require(uniswapV3PriceFeed == address(0) || uniswapV3PriceFeed.isContract(), "CPF_UECOU");
         // PFD_CNC: ChainlinkPriceFeed is not contract
-        require(address(chainlinkPriceFeed).isContract(), "CPF_CNC");
+        require(chainlinkPriceFeed.isContract(), "CPF_CNC");
 
         _uniswapV3PriceFeed = uniswapV3PriceFeed;
         _chainlinkPriceFeed = chainlinkPriceFeed;
