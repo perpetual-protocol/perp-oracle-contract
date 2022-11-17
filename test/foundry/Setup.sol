@@ -39,7 +39,7 @@ contract ChainlinkPriceFeedV3Broken is ChainlinkPriceFeedV3 {
     }
 }
 
-contract BaseSetup is Test {
+contract Setup is Test {
     uint256 internal _timeout = 40 * 60; // 40 mins
     uint24 internal _maxOutlierDeviationRatio = 1e5; // 10%
     uint256 internal _outlierCoolDownPeriod = 10; // 10s

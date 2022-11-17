@@ -7,7 +7,7 @@ import "./Setup.sol";
 import "../../contracts/interface/IPriceFeedV3.sol";
 import "../../contracts/test/TestAggregatorV3.sol";
 
-contract ChainlinkPriceFeedV3ConstructorTest is BaseSetup {
+contract ChainlinkPriceFeedV3ConstructorTest is Setup {
     function test_CPF_ANC() public {
         vm.expectRevert(bytes("CPF_ANC"));
         _chainlinkPriceFeedV3 = new ChainlinkPriceFeedV3(
@@ -31,7 +31,7 @@ contract ChainlinkPriceFeedV3ConstructorTest is BaseSetup {
     }
 }
 
-contract ChainlinkPriceFeedV3Common is IPriceFeedV3Event, BaseSetup {
+contract ChainlinkPriceFeedV3Common is IPriceFeedV3Event, Setup {
     uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint256 internal _timestamp = 10000000;
     uint256 internal _price = 1000 * 1e8;
@@ -39,7 +39,7 @@ contract ChainlinkPriceFeedV3Common is IPriceFeedV3Event, BaseSetup {
     uint256 internal _timestampAfterOutlierCoolDownPeriod = _timestamp + _outlierCoolDownPeriod + 1;
 
     function setUp() public virtual override {
-        BaseSetup.setUp();
+        Setup.setUp();
         // we need Aggregator's decimals() function in the constructor of ChainlinkPriceFeedV3
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(8));
         _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
