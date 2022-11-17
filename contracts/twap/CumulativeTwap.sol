@@ -11,6 +11,7 @@ contract CumulativeTwap is BlockContext {
     //
     // STRUCT
     //
+
     struct Observation {
         uint256 price;
         uint256 priceCumulative;
@@ -18,24 +19,22 @@ contract CumulativeTwap is BlockContext {
     }
 
     //
-    // EVENT
-    //
-    event PriceUpdated(uint256 price, uint256 timestamp, uint8 indexAt);
-
-    //
     // STATE
     //
-    // let's use 15 mins and 1 hr twap as example
-    // if the price is being updated 15 secs, then needs 60 and 240 historical data for 15mins and 1hr twap.
-    Observation[256] public observations;
 
     uint8 public currentObservationIndex;
+    // let's use 15 mins and 1 hr twap as example
+    // if the price is updated every 15 secs, then we need 60 and 240 historical data for 15mins and 1hr twap
+    Observation[256] public observations;
+
+    //
+    // INTERNAL
+    //
 
     function _update(uint256 price, uint256 lastUpdatedTimestamp) internal {
-        // for the first time update
+        // for the first time updating
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
             observations[0] = Observation({ price: price, priceCumulative: 0, timestamp: lastUpdatedTimestamp });
-            emit PriceUpdated(price, lastUpdatedTimestamp, 0);
             return;
         }
 
@@ -43,7 +42,7 @@ contract CumulativeTwap is BlockContext {
         Observation memory lastObservation = observations[currentObservationIndex];
         require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
-        // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
+        // overflow of currentObservationIndex is expected since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0
         currentObservationIndex++;
 
@@ -53,8 +52,6 @@ contract CumulativeTwap is BlockContext {
             timestamp: lastUpdatedTimestamp,
             price: price
         });
-
-        emit PriceUpdated(price, lastUpdatedTimestamp, currentObservationIndex);
     }
 
     function _calculateTwapPrice(
