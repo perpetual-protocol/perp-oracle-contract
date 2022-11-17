@@ -34,3 +34,39 @@ contract PriceFeedDispatcherSetup is Test {
         return new PriceFeedDispatcher(address(_uniswapV3PriceFeed), address(_chainlinkPriceFeed));
     }
 }
+
+contract PriceFeedDispatcherConstructorTest is PriceFeedDispatcherSetup {
+    function test_UniswapV3PriceFeed_can_be_zero_address() public {
+        _priceFeedDispatcher = new PriceFeedDispatcher(address(0), address(_chainlinkPriceFeed));
+    }
+
+    function test_CPF_UECOU() public {
+        vm.expectRevert(bytes("CPF_UECOU"));
+        _priceFeedDispatcher = new PriceFeedDispatcher(makeAddr("HA"), address(_chainlinkPriceFeed));
+    }
+
+    function test_CPF_CNC() public {
+        vm.expectRevert(bytes("CPF_CNC"));
+        _priceFeedDispatcher = new PriceFeedDispatcher(address(_uniswapV3PriceFeed), address(0));
+    }
+}
+
+contract PriceFeedDispatcherTest is PriceFeedDispatcherSetup {
+    address public nonOwnerAddress = makeAddr("nonOwnerAddress");
+
+    function setUp() public virtual override {
+        PriceFeedDispatcherSetup.setUp();
+        _priceFeedDispatcher = _create_PriceFeedDispatcher();
+    }
+
+    function test_setPriceFeedStatus() public {
+        _priceFeedDispatcher.setPriceFeedStatus(PriceFeedDispatcher.Status.Chainlink);
+        _priceFeedDispatcher.setPriceFeedStatus(PriceFeedDispatcher.Status.UniswapV3);
+    }
+
+    function test_cannot_setPriceFeedStatus_by_nonOwnerAddress() public {
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.prank(nonOwnerAddress);
+        _priceFeedDispatcher.setPriceFeedStatus(PriceFeedDispatcher.Status.Chainlink);
+    }
+}
