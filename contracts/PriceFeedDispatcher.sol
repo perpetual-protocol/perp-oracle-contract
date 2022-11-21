@@ -36,7 +36,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     }
 
     function dispatchPrice(uint256 interval) external override {
-        if (_isToSwitchToUniswapV3()) {
+        if (_isToUseUniswapV3PriceFeed()) {
             if (_status != Status.UniswapV3) {
                 _status = Status.UniswapV3;
                 emit StatusUpdated(_status);
@@ -61,7 +61,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     //
 
     function getDispatchedPrice(uint256 interval) external view override returns (uint256) {
-        if (_isToSwitchToUniswapV3()) {
+        if (_isToUseUniswapV3PriceFeed()) {
             return _formatFromDecimalsToX10_18(_uniswapV3PriceFeed.getPrice(), _uniswapV3PriceFeed.decimals());
         }
 
@@ -84,7 +84,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     // INTERNAL
     //
 
-    function _isToSwitchToUniswapV3() internal view returns (bool) {
+    function _isToUseUniswapV3PriceFeed() internal view returns (bool) {
         return
             address(_uniswapV3PriceFeed) != address(0) &&
             (_chainlinkPriceFeedV3.isTimedOut() || _status == Status.UniswapV3);
