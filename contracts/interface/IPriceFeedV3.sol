@@ -27,7 +27,7 @@ interface IPriceFeedV3 is IPriceFeedV3Event {
     }
 
     /// @dev Returns the cached index price of the token.
-    function cacheTwap(uint256 interval) external returns (uint256);
+    function cacheTwap(uint256 interval) external;
 
     function decimals() external view returns (uint8);
 
