@@ -54,7 +54,7 @@ contract CumulativeTwap is BlockContext {
         });
     }
 
-    function _calculateTwapPrice(
+    function _calculateTwap(
         uint256 interval,
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
@@ -105,6 +105,7 @@ contract CumulativeTwap is BlockContext {
         }
 
         uint256 timestampDiff = currentTimestamp - targetTimestamp;
+
         return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
 
