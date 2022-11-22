@@ -272,6 +272,10 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
     }
 
+    function test_getCachedTwap_first_time_without_cacheTwap_yet() public {
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), _price);
+    }
+
     function test_getCachedTwap_with_valid_price_after_a_second() public {
         _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         vm.warp(_timestamp + 1);

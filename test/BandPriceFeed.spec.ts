@@ -266,7 +266,9 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
 
     describe("price is not updated yet", () => {
         const price = "100"
+
         beforeEach(async () => {
+            currentTime = (await waffle.provider.getBlock("latest")).timestamp
             roundData.push([parseEther(price), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
@@ -277,8 +279,9 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             expect(await bandPriceFeed.getPrice(0)).to.eq(parseEther(price))
         })
 
-        it("force error, get twap price", async () => {
-            expect(await bandPriceFeed.getPrice(900)).to.eq(0)
+        it("get twap price", async () => {
+            // if observation has no data, we'll get latest price
+            expect(await bandPriceFeed.getPrice(900)).to.eq(parseEther(price))
         })
     })
 })
