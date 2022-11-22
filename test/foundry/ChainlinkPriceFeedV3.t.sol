@@ -79,11 +79,6 @@ contract ChainlinkPriceFeedV3Common is IPriceFeedV3Event, Setup {
     function _expect_emit_event_from_ChainlinkPriceFeedV3() internal {
         vm.expectEmit(false, false, false, true, address(_chainlinkPriceFeedV3));
     }
-
-    function _next_block() internal {
-        vm.roll(1);
-        skip(1);
-    }
 }
 
 contract ChainlinkPriceFeedV3GetterTest is ChainlinkPriceFeedV3Common {
@@ -123,6 +118,14 @@ contract ChainlinkPriceFeedV3IntervalIsZeroTest is ChainlinkPriceFeedV3Common {
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(0, _price);
         assertEq(_chainlinkPriceFeedV3.getLastValidPrice(), _price);
         assertEq(_chainlinkPriceFeedV3.getLastValidTime(), _timestamp);
+    }
+
+    function test_getCachedTwap_with_valid_price_after_a_second() public {
+        uint256 latestPrice = _price + 1e8;
+        _chainlinkPriceFeedV3.cacheTwap(0);
+        vm.warp(_timestamp + 1);
+        _mock_call_latestRoundData(_roundId + 1, int256(latestPrice), _timestamp + 1);
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(0), latestPrice);
     }
 
     function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
@@ -267,6 +270,30 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
         emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.NotFreezed);
 
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
+    }
+
+    function test_getCachedTwap_with_valid_price_after_a_second() public {
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+        vm.warp(_timestamp + 1);
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), _price);
+    }
+
+    function test_getCachedTwap_with_valid_price_after_several_seconds() public {
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+        vm.warp(_timestamp + 1);
+        _mock_call_latestRoundData(_roundId + 1, int256(_price + 1e8), _timestamp + 1);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+        vm.warp(_timestamp + 2);
+        // (1000 * 1 + 1001 * 1) / 2 = 1000.5
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 1000.5 * 1e8);
+    }
+
+    function test_getCachedTwap_with_valid_price_after_several_seconds_without_cacheTwap() public {
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+        vm.warp(_timestamp + 2);
+        _mock_call_latestRoundData(_roundId + 1, int256(_price + 1e8), _timestamp + 1);
+        // (1000 * 1 + 1001 * 1) / 2 = 1000.5
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 1000.5 * 1e8);
     }
 
     function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {

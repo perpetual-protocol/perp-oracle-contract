@@ -76,11 +76,13 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     }
 
     function getCachedTwap(uint256 interval) external view override returns (uint256) {
+        (uint256 latestValidPrice, uint256 latestValidTime) = _getCachePrice();
+
         if (interval == 0) {
-            return _lastValidPrice;
+            return latestValidPrice;
         }
 
-        return _getCachedTwap(interval, _lastValidPrice, _lastValidTime);
+        return _getCachedTwap(interval, latestValidPrice, latestValidTime);
     }
 
     function decimals() external view override returns (uint8) {
@@ -118,6 +120,29 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
         }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
+    }
+
+    function _getCachePrice() internal view returns (uint256, uint256) {
+        ChainlinkResponse memory response = _getChainlinkData();
+        if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
+            return (_lastValidPrice, _lastValidTime);
+        }
+
+        FreezedReason freezedReason = _getFreezedReason(response);
+        if (freezedReason == FreezedReason.NotFreezed) {
+            return (uint256(response.answer), response.updatedAt);
+        } else if (
+            freezedReason == FreezedReason.AnswerIsOutlier &&
+            _blockTimestamp() > _lastValidTime.add(_outlierCoolDownPeriod)
+        ) {
+            uint24 deviationRatio =
+                uint256(response.answer) > _lastValidPrice
+                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
+                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+            return (_mulRatio(_lastValidPrice, deviationRatio), _blockTimestamp());
+        }
+
+        return (_lastValidPrice, _lastValidTime);
     }
 
     function _getChainlinkData() internal view returns (ChainlinkResponse memory chainlinkResponse) {
