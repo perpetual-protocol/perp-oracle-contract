@@ -60,9 +60,6 @@ contract CumulativeTwap is BlockContext {
         uint256 latestUpdatedTimestamp
     ) internal view returns (uint256) {
         Observation memory latestObservation = observations[currentObservationIndex];
-        if (latestObservation.price == 0) {
-            return 0;
-        }
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp.sub(interval);
@@ -103,6 +100,10 @@ contract CumulativeTwap is BlockContext {
                 )
             );
         }
+
+        // 1. if observation has no data / only one data, _calculateTwap returns 0 (above case 1)
+        // 2. if not enough data, _calculateTwap returns timestampDiff twap price (above case 1)
+        // 3. if exceed the observations' length, _getSurroundingObservations will get reverted
 
         uint256 timestampDiff = currentTimestamp - targetTimestamp;
 
