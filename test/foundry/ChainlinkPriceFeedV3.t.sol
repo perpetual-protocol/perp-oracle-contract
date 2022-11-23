@@ -508,15 +508,16 @@ contract ChainlinkPriceFeedV3IntegrationTest is ChainlinkPriceFeedV3Common {
             uint256(price3).mul(_ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
         _mock_call_latestRoundData(_roundId + 5, outlier1, timestamp5);
         vm.warp(timestamp5);
-        // twap = (1000 * 10 + 960 * 40 + 900 * 50) / 150 = 934
+        // twap = (1000 * 10 + 960 * 40 + 900 * 50) / 100 = 934
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(maxDeviatedPrice1, timestamp5, FreezedReason.AnswerIsOutlier);
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, 934 * 1e8);
 
         uint256 timestamp6 = timestamp5 + 20;
         vm.warp(timestamp6);
-        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        // future timestamp
         _mock_call_latestRoundData(_roundId + 6, outlier1, timestamp6 + 20);
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(maxDeviatedPrice1, timestamp5, FreezedReason.InvalidTimestamp);
         _expect_revert_cacheTwap_CT_IT_with__twapInterval();
 
