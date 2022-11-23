@@ -38,17 +38,17 @@ contract CumulativeTwap is BlockContext {
             return;
         }
 
-        // CT_IT: invalid timestamp
         Observation memory lastObservation = observations[currentObservationIndex];
+        // CT_IT: invalid timestamp
         require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
         // overflow of currentObservationIndex is expected since currentObservationIndex is uint8 (0 - 255),
         // so 255 + 1 will be 0
         currentObservationIndex++;
 
-        uint256 elapsedTime = lastUpdatedTimestamp - lastObservation.timestamp;
+        uint256 timestampDiff = lastUpdatedTimestamp - lastObservation.timestamp;
         observations[currentObservationIndex] = Observation({
-            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
+            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * timestampDiff),
             timestamp: lastUpdatedTimestamp,
             price: price
         });
@@ -56,18 +56,17 @@ contract CumulativeTwap is BlockContext {
 
     function _calculateTwap(
         uint256 interval,
-        uint256 latestPrice,
+        uint256 price,
         uint256 latestUpdatedTimestamp
     ) internal view returns (uint256) {
         Observation memory latestObservation = observations[currentObservationIndex];
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp.sub(interval);
-        (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 currentCumulativePrice =
             latestObservation.priceCumulative.add(
                 (latestObservation.price.mul(latestUpdatedTimestamp.sub(latestObservation.timestamp))).add(
-                    latestPrice.mul(currentTimestamp.sub(latestUpdatedTimestamp))
+                    price.mul(currentTimestamp.sub(latestUpdatedTimestamp))
                 )
             );
 
@@ -78,8 +77,10 @@ contract CumulativeTwap is BlockContext {
         // case 1       targetTimestamp         |               |------->
         // case 2                               |              targetTimestamp
         // case 3                          targetTimestamp
-        //
+
+        (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 targetCumulativePrice;
+
         // case1. not enough historical data or just enough (`==` case)
         if (targetTimestamp <= beforeOrAt.timestamp) {
             targetTimestamp = beforeOrAt.timestamp;
@@ -106,7 +107,6 @@ contract CumulativeTwap is BlockContext {
         // 3. if exceed the observations' length, _getSurroundingObservations will get reverted
 
         uint256 timestampDiff = currentTimestamp - targetTimestamp;
-
         return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
 
@@ -146,10 +146,9 @@ contract CumulativeTwap is BlockContext {
         beforeOrAt = observations[beforeOrAtIndex];
         atOrAfter = observations[atOrAfterIndex];
 
-        // if timestamp of the right bound is earlier than timestamp of the left bound,
-        // it means the left bound is the lastest observation.
-        // It implies the latest observation is older than requested
-        // Then we set the right bound to the left bound.
+        // if the timestamp of the right bound is earlier than timestamp of the left bound,
+        // either there's only one record, or atOrAfterIndex overflows
+        // in these cases, we set the right bound the same as the left bound.
         if (atOrAfter.timestamp < beforeOrAt.timestamp) {
             atOrAfter = beforeOrAt;
         }
