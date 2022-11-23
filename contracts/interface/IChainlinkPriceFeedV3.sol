@@ -35,7 +35,7 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
 
     function getLastValidPrice() external view returns (uint256);
 
-    function getLastValidTime() external view returns (uint256);
+    function getLastValidTimestamp() external view returns (uint256);
 
     /// @param interval twap interval
     /// @dev this is the view version of cacheTwap()
