@@ -6,11 +6,11 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
-import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
+import { IChainlinkPriceFeedV3 } from "./interface/IChainlinkPriceFeedV3.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap {
     using SafeMath for uint256;
     using Address for address;
 
@@ -24,7 +24,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     uint256 internal immutable _outlierCoolDownPeriod;
     uint256 internal immutable _timeout;
     uint256 internal _lastValidPrice;
-    uint256 internal _lastValidTime;
+    uint256 internal _lastValidTimestamp;
     AggregatorV3Interface internal immutable _aggregator;
 
     //
@@ -51,34 +51,40 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
         _decimals = aggregator.decimals();
     }
 
-    function cacheTwap(uint256 interval) external override returns (uint256) {
+    /// @inheritdoc IChainlinkPriceFeedV3
+    function cacheTwap(uint256 interval) external override {
         _cachePrice();
 
-        return interval == 0 ? _lastValidPrice : _cacheTwap(interval, _lastValidPrice, _lastValidTime);
+        if (interval != 0) {
+            _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
+        }
     }
 
     //
     // EXTERNAL VIEW
     //
 
-    function getAggregator() external view returns (address) {
-        return address(_aggregator);
-    }
-
     function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
 
-    function getLastValidTime() external view override returns (uint256) {
-        return _lastValidTime;
+    function getLastValidTimestamp() external view override returns (uint256) {
+        return _lastValidTimestamp;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getCachedTwap(uint256 interval) external view override returns (uint256) {
+        (uint256 latestValidPrice, uint256 latestValidTime) = _getCachePrice();
+
         if (interval == 0) {
-            return _lastValidPrice;
+            return latestValidPrice;
         }
 
-        return _getCachedTwap(interval, _lastValidPrice, _lastValidTime);
+        return _getCachedTwap(interval, latestValidPrice, latestValidTime);
+    }
+
+    function getAggregator() external view override returns (address) {
+        return address(_aggregator);
     }
 
     function decimals() external view override returns (uint8) {
@@ -86,7 +92,7 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     }
 
     function isTimedOut() external view override returns (bool) {
-        return _lastValidTime.add(_timeout) > _blockTimestamp();
+        return _lastValidTimestamp.add(_timeout) > _blockTimestamp();
     }
 
     //
@@ -94,34 +100,58 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
     //
 
     function _cachePrice() internal {
-        ChainlinkResponse memory response = _getChainlinkData();
-        if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
+        ChainlinkResponse memory response = _getChainlinkResponse();
+        if (_lastValidTimestamp != 0 && _lastValidTimestamp == response.updatedAt) {
             return;
         }
 
         FreezedReason freezedReason = _getFreezedReason(response);
         if (freezedReason == FreezedReason.NotFreezed) {
             _lastValidPrice = uint256(response.answer);
-            _lastValidTime = response.updatedAt;
+            _lastValidTimestamp = response.updatedAt;
         } else if (
             freezedReason == FreezedReason.AnswerIsOutlier &&
-            _blockTimestamp() > _lastValidTime.add(_outlierCoolDownPeriod)
+            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
         ) {
             uint24 deviationRatio =
                 uint256(response.answer) > _lastValidPrice
                     ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
                     : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
             _lastValidPrice = _mulRatio(_lastValidPrice, deviationRatio);
-            _lastValidTime = _blockTimestamp();
+            _lastValidTimestamp = _blockTimestamp();
         }
 
-        emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTime, freezedReason);
+        emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
     }
 
-    function _getChainlinkData() internal view returns (ChainlinkResponse memory chainlinkResponse) {
+    function _getCachePrice() internal view returns (uint256, uint256) {
+        ChainlinkResponse memory response = _getChainlinkResponse();
+        if (_lastValidTimestamp != 0 && _lastValidTimestamp == response.updatedAt) {
+            return (_lastValidPrice, _lastValidTimestamp);
+        }
+
+        FreezedReason freezedReason = _getFreezedReason(response);
+        if (freezedReason == FreezedReason.NotFreezed) {
+            return (uint256(response.answer), response.updatedAt);
+        } else if (
+            freezedReason == FreezedReason.AnswerIsOutlier &&
+            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
+        ) {
+            uint24 deviationRatio =
+                uint256(response.answer) > _lastValidPrice
+                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
+                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+            return (_mulRatio(_lastValidPrice, deviationRatio), _blockTimestamp());
+        }
+
+        return (_lastValidPrice, _lastValidTimestamp);
+    }
+
+    function _getChainlinkResponse() internal view returns (ChainlinkResponse memory chainlinkResponse) {
         try _aggregator.decimals() returns (uint8 decimals) {
             chainlinkResponse.decimals = decimals;
         } catch {
+            // if the call fails, return an empty response with success = false
             return chainlinkResponse;
         }
 
@@ -132,27 +162,19 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
             uint256 updatedAt,
             uint80 // answeredInRound
         ) {
-            // If call to Chainlink succeeds, return the response and success = true
             chainlinkResponse.roundId = roundId;
             chainlinkResponse.answer = answer;
             chainlinkResponse.updatedAt = updatedAt;
             chainlinkResponse.success = true;
             return chainlinkResponse;
         } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            // if the call fails, return an empty response with success = false
             return chainlinkResponse;
         }
     }
 
+    /// @dev see IChainlinkPriceFeedV3Event.FreezedReason for each FreezedReason
     function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezedReason) {
-        /*
-        1. no response
-        2. incorrect decimals
-        3. no roundId
-        4. no timestamp or it’s invalid (in the future)
-        5. none positive price
-        6. outlier
-        */
         if (!response.success) {
             return FreezedReason.NoResponse;
         }
@@ -162,13 +184,17 @@ contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
         if (response.roundId == 0) {
             return FreezedReason.NoRoundId;
         }
-        if (response.updatedAt == 0 || response.updatedAt < _lastValidTime || response.updatedAt > _blockTimestamp()) {
+        if (
+            response.updatedAt == 0 ||
+            response.updatedAt < _lastValidTimestamp ||
+            response.updatedAt > _blockTimestamp()
+        ) {
             return FreezedReason.InvalidTimestamp;
         }
         if (response.answer <= 0) {
             return FreezedReason.NonPositiveAnswer;
         }
-        if (_lastValidPrice != 0 && _lastValidTime != 0 && _isOutlier(uint256(response.answer))) {
+        if (_lastValidPrice != 0 && _lastValidTimestamp != 0 && _isOutlier(uint256(response.answer))) {
             return FreezedReason.AnswerIsOutlier;
         }
 

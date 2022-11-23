@@ -5,8 +5,7 @@ pragma abicoder v2;
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
-import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
+import { IChainlinkPriceFeedV3 } from "./interface/IChainlinkPriceFeedV3.sol";
 import { IUniswapV3PriceFeed } from "./interface/IUniswapV3PriceFeed.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { Ownable } from "./base/Ownable.sol";
@@ -71,7 +70,7 @@ contract PriceFeedDispatcher is Ownable, BlockContext {
     function _isToSwitchToUniswapV3() internal view returns (bool) {
         return
             _uniswapV3PriceFeed != address(0) &&
-            (IPriceFeedV3(_chainlinkPriceFeed).isTimedOut() || _status == Status.UniswapV3);
+            (IChainlinkPriceFeedV3(_chainlinkPriceFeed).isTimedOut() || _status == Status.UniswapV3);
     }
 
     function _getUniswapV3Twap() internal view returns (uint256) {
@@ -85,8 +84,8 @@ contract PriceFeedDispatcher is Ownable, BlockContext {
     function _getChainlinkTwap(uint256 interval) internal view returns (uint256) {
         return
             _formatFromDecimalsToX10_18(
-                IPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
-                IPriceFeedV3(_chainlinkPriceFeed).decimals()
+                IChainlinkPriceFeedV3(_chainlinkPriceFeed).getCachedTwap(interval),
+                IChainlinkPriceFeedV3(_chainlinkPriceFeed).decimals()
             );
     }
 
