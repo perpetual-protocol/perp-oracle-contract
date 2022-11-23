@@ -41,6 +41,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
                 _status = Status.UniswapV3;
                 emit StatusUpdated(_status);
             }
+            return;
         }
 
         _chainlinkPriceFeedV3.cacheTwap(interval);
