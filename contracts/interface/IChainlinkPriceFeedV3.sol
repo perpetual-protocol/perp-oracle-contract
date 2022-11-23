@@ -4,6 +4,10 @@ pragma solidity 0.7.6;
 import "./IPriceFeed.sol";
 
 interface IChainlinkPriceFeedV3Event {
+    /// @param NotFreezed default state: Chainlink is working as expected
+    /// @param NoResponse fails to call Chainlink
+    /// @param InvalidTimestamp no timestamp or it’s invalid, either outdated or in the future
+    /// @param AnswerIsOutlier if the answer deviates more than _maxOutlierDeviationRatio
     enum FreezedReason {
         NotFreezed,
         NoResponse,
@@ -26,18 +30,22 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
         uint8 decimals;
     }
 
-    /// @dev Returns the cached index price of the token.
+    /// @param interval twap interval
+    ///        when 0, cache price only, without twap; else, cache price & twap
+    /// @dev this is the non-view version of cacheTwap() without return value
     function cacheTwap(uint256 interval) external;
-
-    function decimals() external view returns (uint8);
 
     function getLastValidPrice() external view returns (uint256);
 
+    function getLastValidTime() external view returns (uint256);
+
+    /// @param interval twap interval
+    /// @dev this is the view version of cacheTwap()
     function getCachedTwap(uint256 interval) external view returns (uint256);
 
-    function getLastValidTime() external view returns (uint256);
+    function isTimedOut() external view returns (bool);
 
     function getAggregator() external view returns (address);
 
-    function isTimedOut() external view returns (bool);
+    function decimals() external view returns (uint8);
 }

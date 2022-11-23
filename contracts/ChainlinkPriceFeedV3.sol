@@ -51,6 +51,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         _decimals = aggregator.decimals();
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function cacheTwap(uint256 interval) external override {
         _cachePrice();
 
@@ -71,6 +72,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         return _lastValidTime;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getCachedTwap(uint256 interval) external view override returns (uint256) {
         (uint256 latestValidPrice, uint256 latestValidTime) = _getCachePrice();
 
@@ -171,15 +173,8 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         }
     }
 
+    /// @dev see IChainlinkPriceFeedV3Event.FreezedReason for each FreezedReason
     function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezedReason) {
-        /*
-        1. no response
-        2. incorrect decimals
-        3. no roundId
-        4. no timestamp or it’s invalid, either outdated or in the future
-        5. non-positive price
-        6. answer is outlier
-        */
         if (!response.success) {
             return FreezedReason.NoResponse;
         }
