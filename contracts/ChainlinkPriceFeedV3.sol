@@ -98,7 +98,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
     //
 
     function _cachePrice() internal {
-        ChainlinkResponse memory response = _getChainlinkData();
+        ChainlinkResponse memory response = _getChainlinkResponse();
         if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
             return;
         }
@@ -123,7 +123,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
     }
 
     function _getCachePrice() internal view returns (uint256, uint256) {
-        ChainlinkResponse memory response = _getChainlinkData();
+        ChainlinkResponse memory response = _getChainlinkResponse();
         if (_lastValidTime != 0 && _lastValidTime == response.updatedAt) {
             return (_lastValidPrice, _lastValidTime);
         }
@@ -145,10 +145,11 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         return (_lastValidPrice, _lastValidTime);
     }
 
-    function _getChainlinkData() internal view returns (ChainlinkResponse memory chainlinkResponse) {
+    function _getChainlinkResponse() internal view returns (ChainlinkResponse memory chainlinkResponse) {
         try _aggregator.decimals() returns (uint8 decimals) {
             chainlinkResponse.decimals = decimals;
         } catch {
+            // if the call fails, return an empty response with success = false
             return chainlinkResponse;
         }
 
@@ -159,14 +160,13 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
             uint256 updatedAt,
             uint80 // answeredInRound
         ) {
-            // If call to Chainlink succeeds, return the response and success = true
             chainlinkResponse.roundId = roundId;
             chainlinkResponse.answer = answer;
             chainlinkResponse.updatedAt = updatedAt;
             chainlinkResponse.success = true;
             return chainlinkResponse;
         } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
+            // if the call fails, return an empty response with success = false
             return chainlinkResponse;
         }
     }
@@ -176,9 +176,9 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         1. no response
         2. incorrect decimals
         3. no roundId
-        4. no timestamp or it’s invalid (in the future)
-        5. none positive price
-        6. outlier
+        4. no timestamp or it’s invalid, either outdated or in the future
+        5. non-positive price
+        6. answer is outlier
         */
         if (!response.success) {
             return FreezedReason.NoResponse;
