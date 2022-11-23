@@ -76,7 +76,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         return _status;
     }
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
 

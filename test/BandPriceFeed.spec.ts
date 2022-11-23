@@ -11,7 +11,7 @@ interface BandPriceFeedFixture {
 }
 
 async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
-    const [admin] = await ethers.getSigners();
+    const [admin] = await ethers.getSigners()
     const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference", admin)
     const testStdReference = await testStdReferenceFactory.deploy()
 
@@ -265,18 +265,23 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
     })
 
     describe("price is not updated yet", () => {
+        const price = "100"
+
         beforeEach(async () => {
-            roundData.push([parseEther("100"), currentTime, currentTime])
+            currentTime = (await waffle.provider.getBlock("latest")).timestamp
+            roundData.push([parseEther(price), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
         })
+
         it("get spot price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+            expect(await bandPriceFeed.getPrice(0)).to.eq(parseEther(price))
         })
 
-        it("force error, get twap price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+        it("get twap price", async () => {
+            // if observation has no data, we'll get latest price
+            expect(await bandPriceFeed.getPrice(900)).to.eq(parseEther(price))
         })
     })
 })
