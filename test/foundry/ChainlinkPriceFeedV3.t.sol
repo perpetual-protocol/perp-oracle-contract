@@ -4,7 +4,7 @@ pragma abicoder v2;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Setup.sol";
-import "../../contracts/interface/IPriceFeedV3.sol";
+import "../../contracts/interface/IChainlinkPriceFeedV3.sol";
 import "../../contracts/test/TestAggregatorV3.sol";
 
 contract ChainlinkPriceFeedV3ConstructorTest is Setup {
@@ -31,7 +31,7 @@ contract ChainlinkPriceFeedV3ConstructorTest is Setup {
     }
 }
 
-contract ChainlinkPriceFeedV3Common is IPriceFeedV3Event, Setup {
+contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
     uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint256 internal _timestamp = 10000000;
     uint256 internal _price = 1000 * 1e8;

@@ -6,11 +6,11 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
-import { IPriceFeedV3 } from "./interface/IPriceFeedV3.sol";
+import { IChainlinkPriceFeedV3 } from "./interface/IChainlinkPriceFeedV3.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV3 is IPriceFeedV3, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap {
     using SafeMath for uint256;
     using Address for address;
 
