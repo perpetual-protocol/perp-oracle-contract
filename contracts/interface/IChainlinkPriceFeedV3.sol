@@ -37,5 +37,7 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
 
     function getLastValidTime() external view returns (uint256);
 
+    function getAggregator() external view returns (address);
+
     function isTimedOut() external view returns (bool);
 }

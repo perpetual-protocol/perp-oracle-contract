@@ -63,10 +63,6 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
     // EXTERNAL VIEW
     //
 
-    function getAggregator() external view returns (address) {
-        return address(_aggregator);
-    }
-
     function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
@@ -83,6 +79,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         }
 
         return _getCachedTwap(interval, latestValidPrice, latestValidTime);
+    }
+
+    function getAggregator() external view override returns (address) {
+        return address(_aggregator);
     }
 
     function decimals() external view override returns (uint8) {
