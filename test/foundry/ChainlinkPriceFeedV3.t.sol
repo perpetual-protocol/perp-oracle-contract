@@ -41,9 +41,10 @@ contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
 
     function setUp() public virtual override {
         Setup.setUp();
+
         // we need Aggregator's decimals() function in the constructor of ChainlinkPriceFeedV3
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(8));
-        _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
+        _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3(_testAggregator);
 
         vm.warp(_timestamp);
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp);
@@ -145,7 +146,6 @@ contract ChainlinkPriceFeedV3IntervalIsZeroTest is ChainlinkPriceFeedV3Common {
 
         _chainlinkPriceFeedV3Broken_cacheTwap_and_assert_eq(0, 0);
         assertEq(_chainlinkPriceFeedV3Broken.getLastValidTime(), 0);
-        assertEq(int256(_chainlinkPriceFeedV3Broken.getFreezedReason()), int256(FreezedReason.NoResponse));
     }
 
     function test_cacheTwap_freezedReason_is_IncorrectDecimals() public {
@@ -318,7 +318,6 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
 
         _chainlinkPriceFeedV3Broken_cacheTwap_and_assert_eq(_twapInterval, 0);
         assertEq(_chainlinkPriceFeedV3Broken.getLastValidTime(), 0);
-        assertEq(int256(_chainlinkPriceFeedV3Broken.getFreezedReason()), int256(FreezedReason.NoResponse));
     }
 
     function test_cacheTwap_freezedReason_is_IncorrectDecimals() public {
