@@ -1,6 +1,7 @@
 pragma solidity 0.7.6;
 
 import "forge-std/Test.sol";
+import { IUniswapV3PriceFeed } from "../../contracts/interface/IUniswapV3PriceFeed.sol";
 import { UniswapV3Pool } from "@uniswap/v3-core/contracts/UniswapV3Pool.sol";
 import { UniswapV3PriceFeed } from "../../contracts/UniswapV3PriceFeed.sol";
 import { TestAggregatorV3 } from "../../contracts/test/TestAggregatorV3.sol";
@@ -106,6 +107,51 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
     function test_cannot_setPriceFeedStatus_when__uniswapV3PriceFeed_not_exist() public {
         vm.expectRevert(bytes("PFD_UU"));
         _priceFeedDispatcherUniswapV3PriceFeedNotExist.setPriceFeedStatus(Status.UniswapV3);
+    }
+
+    function test_setChainlinkPriceFeedV3() public {
+        ChainlinkPriceFeedV3 newChainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
+        _expect_emit_event_from_PriceFeedDispatcher();
+        emit ChainlinkPriceFeedV3Updated(newChainlinkPriceFeedV3);
+        _priceFeedDispatcher.setChainlinkPriceFeedV3(newChainlinkPriceFeedV3);
+        assertEq(address(_priceFeedDispatcher.getChainlinkPriceFeedV3()), address(newChainlinkPriceFeedV3));
+
+        vm.expectRevert(bytes("PFD_CNC"));
+        _priceFeedDispatcher.setChainlinkPriceFeedV3(ChainlinkPriceFeedV3(address(0)));
+    }
+
+    function test_cannot_setChainlinkPriceFeedV3_by_nonOwnerAddress() public {
+        ChainlinkPriceFeedV3 newChainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3();
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.prank(nonOwnerAddress);
+        _priceFeedDispatcher.setChainlinkPriceFeedV3(newChainlinkPriceFeedV3);
+    }
+
+    function test_setUniswapV3PriceFeed() public {
+        _expect_emit_event_from_PriceFeedDispatcher();
+        emit UniswapV3PriceFeedUpdated(UniswapV3PriceFeed(address(0)));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(UniswapV3PriceFeed(address(0)));
+        assertEq(address(_priceFeedDispatcher.getUniswapV3PriceFeed()), address(0));
+
+        UniswapV3PriceFeed newUniswapV3PriceFeed = _create_uniswapV3PriceFeed();
+        _expect_emit_event_from_PriceFeedDispatcher();
+        emit UniswapV3PriceFeedUpdated(newUniswapV3PriceFeed);
+        _priceFeedDispatcher.setUniswapV3PriceFeed(newUniswapV3PriceFeed);
+        assertEq(address(_priceFeedDispatcher.getUniswapV3PriceFeed()), address(newUniswapV3PriceFeed));
+
+        vm.expectRevert(bytes("PFD_UECOU"));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(UniswapV3PriceFeed(address(1)));
+
+        _priceFeedDispatcher.setPriceFeedStatus(Status.UniswapV3);
+        vm.expectRevert(bytes("PFD_UNS"));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(UniswapV3PriceFeed(address(0)));
+    }
+
+    function test_cannot_setUniswapV3PriceFeed_by_nonOwnerAddress() public {
+        UniswapV3PriceFeed newUniswapV3PriceFeed = _create_uniswapV3PriceFeed();
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.prank(nonOwnerAddress);
+        _priceFeedDispatcher.setUniswapV3PriceFeed(newUniswapV3PriceFeed);
     }
 
     function test_dispatchPrice_not__isToUseUniswapV3PriceFeed() public {
