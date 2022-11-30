@@ -20,13 +20,13 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
 
     function setPriceFeedStatus(Status status) external;
 
-    function getDispatchedPrice(uint256 interval) external returns (uint256);
+    function getDispatchedPrice(uint256 interval) external view returns (uint256);
 
-    function getChainlinkPriceFeedV3() external returns (ChainlinkPriceFeedV3);
+    function getChainlinkPriceFeedV3() external view returns (ChainlinkPriceFeedV3);
 
-    function getUniswapV3PriceFeed() external returns (UniswapV3PriceFeed);
+    function getUniswapV3PriceFeed() external view returns (UniswapV3PriceFeed);
 
-    function getStatus() external returns (Status);
+    function getStatus() external view returns (Status);
 
-    function decimals() external returns (uint8);
+    function decimals() external pure returns (uint8);
 }
