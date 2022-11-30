@@ -18,8 +18,8 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     uint8 private constant _DECIMALS = 18;
 
     Status internal _status = Status.Chainlink;
-    UniswapV3PriceFeed internal immutable _uniswapV3PriceFeed;
-    ChainlinkPriceFeedV3 internal immutable _chainlinkPriceFeedV3;
+    UniswapV3PriceFeed internal _uniswapV3PriceFeed;
+    ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
 
     //
     // EXTERNAL NON-VIEW
@@ -58,6 +58,29 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         emit StatusUpdated(_status);
     }
 
+    function setUniswapV3PriceFeed(UniswapV3PriceFeed uniswapV3PriceFeed) external override onlyOwner {
+        // PFD_UECOU: UniswapV3PriceFeed (has to be) either contract or uninitialized
+        require(address(uniswapV3PriceFeed) == address(0) || address(uniswapV3PriceFeed).isContract(), "PFD_UECOU");
+
+        if (address(uniswapV3PriceFeed) == address(0)) {
+            // PFD_UNS: UniswapV3PriceFeed is not settable
+            require(_status != Status.UniswapV3, "PFD_UNS");
+        }
+
+        _uniswapV3PriceFeed = uniswapV3PriceFeed;
+
+        emit UniswapV3PriceFeedUpdated(uniswapV3PriceFeed);
+    }
+
+    function setChainlinkPriceFeedV3(ChainlinkPriceFeedV3 chainlinkPriceFeedV3) external override onlyOwner {
+        // PFD_CNC: ChainlinkPriceFeed is not contract
+        require(address(chainlinkPriceFeedV3).isContract(), "PFD_CNC");
+
+        _chainlinkPriceFeedV3 = chainlinkPriceFeedV3;
+
+        emit ChainlinkPriceFeedV3Updated(chainlinkPriceFeedV3);
+    }
+
     //
     // EXTERNAL VIEW
     //
@@ -77,6 +100,14 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
     function getStatus() external view override returns (Status) {
         return _status;
+    }
+
+    function getChainlinkPriceFeedV3() external view override returns (ChainlinkPriceFeedV3) {
+        return _chainlinkPriceFeedV3;
+    }
+
+    function getUniswapV3PriceFeed() external view override returns (UniswapV3PriceFeed) {
+        return _uniswapV3PriceFeed;
     }
 
     function decimals() external pure override returns (uint8) {
