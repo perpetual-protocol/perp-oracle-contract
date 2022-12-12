@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [unreleased]
+
+## [0.6.0] - TBD
 ### Added
 - Add `ChainlinkPriceFeedV3.sol` with better error handling when Chainlink is broken.
 - Add `PriceFeedDispatcher.sol`, a proxy layer to fetch Chainlink or Uniswap's price.
