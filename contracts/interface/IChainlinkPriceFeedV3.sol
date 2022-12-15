@@ -13,7 +13,8 @@ interface IChainlinkPriceFeedV3Event {
         NoRoundId,
         InvalidTimestamp,
         NonPositiveAnswer,
-        AnswerIsOutlier
+        AnswerIsOutlier,
+        Timeout
     }
 
     event ChainlinkPriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
@@ -42,6 +43,8 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
     function getCachedTwap(uint256 interval) external view returns (uint256);
 
     function isTimedOut() external view returns (bool);
+
+    function getFreezedReason() external view returns (FreezedReason);
 
     function getAggregator() external view returns (address);
 
