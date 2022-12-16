@@ -13,8 +13,7 @@ interface IChainlinkPriceFeedV3Event {
         NoRoundId,
         InvalidTimestamp,
         NonPositiveAnswer,
-        AnswerIsOutlier,
-        Timeout
+        AnswerIsOutlier
     }
 
     event ChainlinkPriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
