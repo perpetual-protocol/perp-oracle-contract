@@ -102,12 +102,12 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         return _status;
     }
 
-    function getChainlinkPriceFeedV3() external view override returns (ChainlinkPriceFeedV3) {
-        return _chainlinkPriceFeedV3;
+    function getChainlinkPriceFeedV3() external view override returns (address) {
+        return address(_chainlinkPriceFeedV3);
     }
 
-    function getUniswapV3PriceFeed() external view override returns (UniswapV3PriceFeed) {
-        return _uniswapV3PriceFeed;
+    function getUniswapV3PriceFeed() external view override returns (address) {
+        return address(_uniswapV3PriceFeed);
     }
 
     function decimals() external pure override returns (uint8) {

@@ -118,12 +118,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
             freezedReason == FreezedReason.AnswerIsOutlier &&
             _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
         ) {
-            uint24 deviationRatio =
-                uint256(response.answer) > _lastValidPrice
-                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
-                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
-            _lastValidPrice = _mulRatio(_lastValidPrice, deviationRatio);
-            _lastValidTimestamp = _blockTimestamp();
+            (_lastValidPrice, _lastValidTimestamp) = _getPriceAndTimestampAfterOutlierCoolDown(response.answer);
         }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
@@ -142,11 +137,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
             freezedReason == FreezedReason.AnswerIsOutlier &&
             _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
         ) {
-            uint24 deviationRatio =
-                uint256(response.answer) > _lastValidPrice
-                    ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
-                    : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
-            return (_mulRatio(_lastValidPrice, deviationRatio), _blockTimestamp());
+            return (_getPriceAndTimestampAfterOutlierCoolDown(response.answer));
         }
 
         return (_lastValidPrice, _lastValidTimestamp);
@@ -210,6 +201,19 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
         uint256 deviationRatio = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastValidPrice);
         return deviationRatio >= _maxOutlierDeviationRatio;
+    }
+
+    /// @dev after freezing for _outlierCoolDownPeriod, we gradually update _lastValidPrice by _maxOutlierDeviationRatio
+    ///      e.g.
+    ///      input: 300 -> 500 -> 630
+    ///      output: 300 -> 300 (wait for _outlierCoolDownPeriod) -> 330 (assuming _maxOutlierDeviationRatio = 10%)
+    function _getPriceAndTimestampAfterOutlierCoolDown(int256 answer) internal view returns (uint256, uint256) {
+        uint24 deviationRatio =
+            uint256(answer) > _lastValidPrice
+                ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
+                : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+
+        return (_mulRatio(_lastValidPrice, deviationRatio), _blockTimestamp());
     }
 
     function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
