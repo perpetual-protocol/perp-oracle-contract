@@ -109,7 +109,28 @@ contract ChainlinkPriceFeedV3GetterTest is ChainlinkPriceFeedV3Common {
     }
 }
 
-contract ChainlinkPriceFeedV3IntervalIsZeroTest is ChainlinkPriceFeedV3Common {
+contract ChainlinkPriceFeedV3UpdateTest is ChainlinkPriceFeedV3Common {
+    function test_update_first_time_with_valid_price() public {
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.NotFreezed);
+        _chainlinkPriceFeedV3.update();
+
+        assertEq(_chainlinkPriceFeedV3.getLastValidPrice(), _price);
+        assertEq(_chainlinkPriceFeedV3.getLastValidTimestamp(), _timestamp);
+    }
+
+    function test_revert_update_CT_IT_when_the_new_timestamp_is_the_same_as_last_update() public {
+        _chainlinkPriceFeedV3.update();
+
+        // giving a different price but the same timestamp
+        _mock_call_latestRoundData(_roundId, 2000 * 1e8, _timestamp);
+
+        vm.expectRevert(bytes("CT_IT"));
+        _chainlinkPriceFeedV3.update();
+    }
+}
+
+contract ChainlinkPriceFeedV3CacheTwapIntervalIsZeroTest is ChainlinkPriceFeedV3Common {
     using SafeMath for uint256;
 
     function test_cacheTwap_first_time_caching_with_valid_price() public {
@@ -262,7 +283,7 @@ contract ChainlinkPriceFeedV3IntervalIsZeroTest is ChainlinkPriceFeedV3Common {
     }
 }
 
-contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common {
+contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFeedV3Common {
     using SafeMath for uint256;
 
     function test_cacheTwap_first_time_caching_with_valid_price() public {
@@ -306,7 +327,7 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
         assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 1000.5 * 1e8);
     }
 
-    function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
+    function test_revert_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
 
         // giving a different price but the same old timestamp
@@ -434,7 +455,7 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, 93875 * 1e6);
     }
 
-    function test_cacheTwap_freezedReason_is_AnswerIsOutlier_but_before__outlierCoolDownPeriod() public {
+    function test_revert_cacheTwap_freezedReason_is_AnswerIsOutlier_but_before__outlierCoolDownPeriod() public {
         _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
 
         _mock_call_latestRoundData(_roundId + 1, 500 * 1e8, _timestampBeforeOutlierCoolDownPeriod);
@@ -460,7 +481,7 @@ contract ChainlinkPriceFeedV3IntervalIsNotZeroTest is ChainlinkPriceFeedV3Common
     }
 }
 
-contract ChainlinkPriceFeedV3IntegrationTest is ChainlinkPriceFeedV3Common {
+contract ChainlinkPriceFeedV3CacheTwapIntegrationTest is ChainlinkPriceFeedV3Common {
     using SafeMath for uint256;
 
     function test_integration_of_ChainlinkPriceFeedV3_CachedTwap_and_CumulativeTwap() public {

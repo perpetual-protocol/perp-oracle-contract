@@ -51,19 +51,18 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         _decimals = aggregator.decimals();
     }
 
-    /// @dev anyone can help update it.
+    /// @notice anyone can help with updating
+    /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
+    ///      with the same timestamp will get reverted in CumulativeTwap._update()
     function update() external {
-        _cachePrice();
-        _update(_lastValidPrice, _lastValidTimestamp);
+        cacheTwap(0);
     }
 
     /// @inheritdoc IChainlinkPriceFeedV3
-    function cacheTwap(uint256 interval) external override {
+    function cacheTwap(uint256 interval) public override {
         _cachePrice();
 
-        if (interval != 0) {
-            _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
-        }
+        _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
     }
 
     //
