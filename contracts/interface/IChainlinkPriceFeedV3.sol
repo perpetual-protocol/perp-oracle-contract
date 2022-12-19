@@ -43,6 +43,8 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
 
     function isTimedOut() external view returns (bool);
 
+    function getFreezedReason() external view returns (FreezedReason);
+
     function getAggregator() external view returns (address);
 
     function decimals() external view returns (uint8);
