@@ -30,9 +30,9 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
     function getDispatchedPrice(uint256 interval) external view returns (uint256);
 
-    function getChainlinkPriceFeedV3() external view returns (ChainlinkPriceFeedV3);
+    function getChainlinkPriceFeedV3() external view returns (address);
 
-    function getUniswapV3PriceFeed() external view returns (UniswapV3PriceFeed);
+    function getUniswapV3PriceFeed() external view returns (address);
 
     function getStatus() external view returns (Status);
 
