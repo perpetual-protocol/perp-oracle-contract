@@ -13,6 +13,7 @@ interface IPriceFeedDispatcherEvent {
 
 interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     /// @notice when Chainlink is down, switch priceFeed source to UniswapV3PriceFeed
+    /// @dev this method is called by every tx that settles funding in Exchange.settleFunding() -> BaseToken.cacheTwap()
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
     function dispatchPrice(uint256 interval) external;
 
@@ -20,6 +21,8 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
 
     function setUniswapV3PriceFeed(UniswapV3PriceFeed uniswapV3PriceFeed) external;
 
+    /// @dev once the destination of dispatchPrice() is fallen back to UniswapV3PriceFeed,
+    ///      admin has to call this function to switch back to ChainlinkPriceFeedV3; it won't recover automatically
     function setPriceFeedStatus(Status status) external;
 
     /// @notice return price from Chainlink if Chainlink works as expected; else, price from UniswapV3PriceFeed
