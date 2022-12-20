@@ -45,12 +45,12 @@ contract UniswapV3PriceFeed is IUniswapV3PriceFeed, BlockContext {
     // INTERNAL
     //
 
-    /// @dev if twapInterval < 10 (should be less than 1 block), return mark price without twap directly
+    /// @dev if twapInterval < 10 (should be less than 1 block), return market price without twap directly
     ///      as twapInterval is too short and makes getting twap over such a short period meaningless
     function _getSqrtMarkTwapX96(uint32 twapInterval) internal view returns (uint160) {
         if (twapInterval < 10) {
-            (uint160 sqrtMarkPrice, , , , , , ) = IUniswapV3Pool(pool).slot0();
-            return sqrtMarkPrice;
+            (uint160 sqrtMarketPrice, , , , , , ) = IUniswapV3Pool(pool).slot0();
+            return sqrtMarketPrice;
         }
         uint32[] memory secondsAgos = new uint32[](2);
 

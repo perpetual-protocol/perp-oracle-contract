@@ -31,7 +31,7 @@ describe("UniswapV3PriceFeed Spec", () => {
         await expect(uniswapV3PriceFeedFactory.deploy(admin.address)).to.be.revertedWith("UPF_PANC")
     })
 
-    describe("", () => {
+    describe("pool address is contract", () => {
         beforeEach(async () => {
             const _fixture = await loadFixture(uniswapV3PriceFeedFixture)
             uniswapV3PriceFeed = _fixture.uniswapV3PriceFeed
