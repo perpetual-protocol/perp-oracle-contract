@@ -116,27 +116,7 @@ contract ChainlinkPriceFeedV3GetterTest is ChainlinkPriceFeedV3Common {
     }
 }
 
-contract ChainlinkPriceFeedV3UpdateTest is ChainlinkPriceFeedV3Common {
-    function test_update_first_time_with_valid_price() public {
-        _expect_emit_event_from_ChainlinkPriceFeedV3();
-        emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.NotFreezed);
-        _chainlinkPriceFeedV3.update();
-
-        assertEq(_chainlinkPriceFeedV3.getLastValidPrice(), _price);
-        assertEq(_chainlinkPriceFeedV3.getLastValidTimestamp(), _timestamp);
-    }
-
-    function test_revert_update_CT_IT_when_the_new_timestamp_is_the_same_as_last_update() public {
-        _chainlinkPriceFeedV3.update();
-
-        // giving a different price but the same timestamp
-        _mock_call_latestRoundData(_roundId, 2000 * 1e8, _timestamp);
-
-        vm.expectRevert(bytes("CT_IT"));
-        _chainlinkPriceFeedV3.update();
-    }
-}
-
+// this test also covers update() since it's essentially cacheTwap(0)
 contract ChainlinkPriceFeedV3CacheTwapIntervalIsZeroTest is ChainlinkPriceFeedV3Common {
     using SafeMath for uint256;
 
