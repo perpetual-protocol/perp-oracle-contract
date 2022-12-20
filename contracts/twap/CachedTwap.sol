@@ -18,14 +18,17 @@ abstract contract CachedTwap is CumulativeTwap {
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
     ) internal virtual returns (uint256) {
-        // if the requested interval is not the same as the one we have cached, call _getTwap() directly
+        // always help update price for CumulativeTwap
+        _update(latestPrice, latestUpdatedTimestamp);
+
+        // if interval is not the same as _interval, won't update _lastUpdatedAt & _cachedTwap
+        // and if interval == 0, return latestPrice directly as there won't be twap
         if (_interval != interval) {
-            return _getTwap(interval, latestPrice, latestUpdatedTimestamp);
+            return interval == 0 ? latestPrice : _getTwap(interval, latestPrice, latestUpdatedTimestamp);
         }
 
         // only calculate twap and cache it when there's a new timestamp
         if (_blockTimestamp() != _lastUpdatedAt) {
-            _update(latestPrice, latestUpdatedTimestamp);
             _lastUpdatedAt = uint160(_blockTimestamp());
             _cachedTwap = _getTwap(interval, latestPrice, latestUpdatedTimestamp);
         }
