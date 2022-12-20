@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 
 import { IPriceFeedV2 } from "../interface/IPriceFeedV2.sol";
 
-contract TestPriceFeed {
+contract TestPriceFeedV2 {
     address public chainlink;
     address public bandProtocol;
 

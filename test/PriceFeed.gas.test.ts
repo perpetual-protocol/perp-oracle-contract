@@ -1,6 +1,6 @@
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
+import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeedV2, TestStdReference } from "../typechain"
 
 const twapInterval = 900
 interface PriceFeedFixture {
@@ -8,7 +8,6 @@ interface PriceFeedFixture {
     bandReference: TestStdReference
     baseAsset: string
 
-    // chainlinik
     chainlinkPriceFeed: ChainlinkPriceFeedV2
     aggregator: TestAggregatorV3
 }
@@ -47,7 +46,7 @@ describe.skip("Price feed gas test", () => {
     let chainlinkPriceFeed: ChainlinkPriceFeedV2
     let aggregator: TestAggregatorV3
     let currentTime: number
-    let testPriceFeed: TestPriceFeed
+    let testPriceFeed: TestPriceFeedV2
     let beginPrice = 400
     let round: number
 
@@ -77,11 +76,11 @@ describe.skip("Price feed gas test", () => {
         aggregator = _fixture.aggregator
         round = 0
 
-        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeed")
+        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeedV2")
         testPriceFeed = (await TestPriceFeedFactory.deploy(
             chainlinkPriceFeed.address,
             bandPriceFeed.address,
-        )) as TestPriceFeed
+        )) as TestPriceFeedV2
 
         currentTime = (await waffle.provider.getBlock("latest")).timestamp
         for (let i = 0; i < 255; i++) {

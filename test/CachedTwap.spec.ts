@@ -1,14 +1,13 @@
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
+import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeedV2, TestStdReference } from "../typechain"
 
 interface PriceFeedFixture {
     bandPriceFeed: BandPriceFeed
     bandReference: TestStdReference
     baseAsset: string
 
-    // chainlinik
     chainlinkPriceFeed: ChainlinkPriceFeedV2
     aggregator: TestAggregatorV3
 }
@@ -47,7 +46,7 @@ describe("Cached Twap Spec", () => {
     let chainlinkPriceFeed: ChainlinkPriceFeedV2
     let aggregator: TestAggregatorV3
     let currentTime: number
-    let testPriceFeed: TestPriceFeed
+    let testPriceFeed: TestPriceFeedV2
     let round: number
 
     async function setNextBlockTimestamp(timestamp: number) {
@@ -80,11 +79,11 @@ describe("Cached Twap Spec", () => {
         aggregator = _fixture.aggregator
         round = 0
 
-        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeed")
+        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeedV2")
         testPriceFeed = (await TestPriceFeedFactory.deploy(
             chainlinkPriceFeed.address,
             bandPriceFeed.address,
-        )) as TestPriceFeed
+        )) as TestPriceFeedV2
 
         currentTime = (await waffle.provider.getBlock("latest")).timestamp
         await updatePrice(400)
