@@ -121,15 +121,11 @@ describe("Cached Twap Spec", () => {
 
         it("re-calculate cached twap if timestamp moves", async () => {
             const price1 = await testPriceFeed.callStatic.getPrice(45)
+            // timestamp changes due to cacheTwap()
             await testPriceFeed.getPrice(45)
 
-            const price2 = await testPriceFeed.callStatic.getPrice(45)
-            expect(price2.twap).to.eq(price2.cachedTwap)
-            // `getPrice` here is no a view function, it mocked function in TestPriceFeed
-            // and it will update the cache if necessary
-            expect(price2.twap).to.eq(await bandPriceFeed.getPrice(45))
-
-            expect(price1.cachedTwap).to.not.eq(price2.cachedTwap)
+            const price2 = await chainlinkPriceFeed.callStatic.getPrice(45)
+            expect(price1.cachedTwap).to.not.eq(price2)
         })
 
         it("re-calculate twap if block timestamp is different from last cached twap timestamp", async () => {
@@ -150,6 +146,11 @@ describe("Cached Twap Spec", () => {
             const price2 = await bandPriceFeed.getPrice(15)
             // shoule re-calculate twap
             expect(price2).to.not.eq(price1)
+        })
+
+        it("force error, CT_IT if timestamp doesn't change", async () => {
+            await testPriceFeed.getPrice(45)
+            await expect(testPriceFeed.callStatic.getPrice(45)).to.be.revertedWith("CT_IT")
         })
     })
 })
