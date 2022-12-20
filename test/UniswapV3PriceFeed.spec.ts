@@ -26,25 +26,32 @@ describe("UniswapV3PriceFeed Spec", () => {
     let uniswapV3PriceFeed: UniswapV3PriceFeed
     let uniswapV3Pool: FakeContract<UniswapV3Pool>
 
-    beforeEach(async () => {
-        const _fixture = await loadFixture(uniswapV3PriceFeedFixture)
-        uniswapV3PriceFeed = _fixture.uniswapV3PriceFeed
-        uniswapV3Pool = _fixture.uniswapV3Pool
+    it("force error, pool address has to be a contract", async () => {
+        const uniswapV3PriceFeedFactory = await ethers.getContractFactory("UniswapV3PriceFeed")
+        await expect(uniswapV3PriceFeedFactory.deploy(admin.address)).to.be.revertedWith("UPF_PANC")
     })
 
-    describe("decimals()", () => {
-        it("decimals should be 18", async () => {
-            expect(await uniswapV3PriceFeed.decimals()).to.be.eq(18)
+    describe("", () => {
+        beforeEach(async () => {
+            const _fixture = await loadFixture(uniswapV3PriceFeedFixture)
+            uniswapV3PriceFeed = _fixture.uniswapV3PriceFeed
+            uniswapV3Pool = _fixture.uniswapV3Pool
         })
-    })
 
-    describe("getPrice()", () => {
-        it("twap", async () => {
-            uniswapV3Pool.observe.returns([[BigNumber.from(0), BigNumber.from(82800000)], []])
-            // twapTick = (82800000-0) / 1800 = 46000
-            // twap = 1.0001^46000 = 99.4614384055
-            const indexPrice = await uniswapV3PriceFeed.getPrice()
-            expect(indexPrice).to.be.eq(parseEther("99.461438405455592365"))
+        describe("decimals()", () => {
+            it("decimals should be 18", async () => {
+                expect(await uniswapV3PriceFeed.decimals()).to.be.eq(18)
+            })
+        })
+
+        describe("getPrice()", () => {
+            it("twap", async () => {
+                uniswapV3Pool.observe.returns([[BigNumber.from(0), BigNumber.from(82800000)], []])
+                // twapTick = (82800000-0) / 1800 = 46000
+                // twap = 1.0001^46000 = 99.4614384055
+                const indexPrice = await uniswapV3PriceFeed.getPrice()
+                expect(indexPrice).to.be.eq(parseEther("99.461438405455592365"))
+            })
         })
     })
 })
