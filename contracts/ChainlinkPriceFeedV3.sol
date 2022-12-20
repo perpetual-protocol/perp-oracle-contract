@@ -51,13 +51,11 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         _decimals = aggregator.decimals();
     }
 
-    /// @inheritdoc IChainlinkPriceFeedV3
-    function cacheTwap(uint256 interval) external override {
-        _cachePrice();
-
-        if (interval != 0) {
-            _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
-        }
+    /// @notice anyone can help with updating
+    /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
+    ///      with the same timestamp will get reverted in CumulativeTwap._update()
+    function update() external {
+        cacheTwap(0);
     }
 
     //
@@ -83,6 +81,15 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         return _getCachedTwap(interval, latestValidPrice, latestValidTime);
     }
 
+    function isTimedOut() external view override returns (bool) {
+        return _lastValidTimestamp != 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+    }
+
+    function getFreezedReason() external view override returns (FreezedReason) {
+        ChainlinkResponse memory response = _getChainlinkResponse();
+        return _getFreezedReason(response);
+    }
+
     function getAggregator() external view override returns (address) {
         return address(_aggregator);
     }
@@ -91,13 +98,15 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         return _decimals;
     }
 
-    function isTimedOut() external view override returns (bool) {
-        return _lastValidTimestamp != 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
-    }
+    //
+    // PUBLIC
+    //
 
-    function getFreezedReason() external view override returns (FreezedReason) {
-        ChainlinkResponse memory response = _getChainlinkResponse();
-        return _getFreezedReason(response);
+    /// @inheritdoc IChainlinkPriceFeedV3
+    function cacheTwap(uint256 interval) public override {
+        _cachePrice();
+
+        _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
     }
 
     //
