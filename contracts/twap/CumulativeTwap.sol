@@ -42,6 +42,7 @@ contract CumulativeTwap is BlockContext {
         // CT_IT: invalid timestamp
         require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
+        // if the price remains still, there's no need for update
         if (price == lastObservation.price) {
             return;
         }
