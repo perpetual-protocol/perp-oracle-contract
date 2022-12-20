@@ -1,20 +1,20 @@
 import { MockContract, smock } from "@defi-wonderland/smock"
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import chai, { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
 import {
-    ChainlinkPriceFeedV2,
-    ChainlinkPriceFeedV2__factory,
+    ChainlinkPriceFeedV3,
+    ChainlinkPriceFeedV3__factory,
     PriceFeedUpdater,
     TestAggregatorV3__factory,
 } from "../typechain"
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers)
 
 interface PriceFeedUpdaterFixture {
-    ethPriceFeed: MockContract<ChainlinkPriceFeedV2>
-    btcPriceFeed: MockContract<ChainlinkPriceFeedV2>
+    ethPriceFeed: MockContract<ChainlinkPriceFeedV3>
+    btcPriceFeed: MockContract<ChainlinkPriceFeedV3>
     priceFeedUpdater: PriceFeedUpdater
     admin: SignerWithAddress
     alice: SignerWithAddress
@@ -42,14 +42,17 @@ describe("PriceFeedUpdater Spec", () => {
     }
 
     async function createFixture(): Promise<PriceFeedUpdaterFixture> {
-        const [admin, alice] = await ethers.getSigners();
+        const [admin, alice] = await ethers.getSigners()
 
         const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3", admin)
         const aggregator = await aggregatorFactory.deploy()
 
-        const chainlinkPriceFeedV2Factory = await smock.mock<ChainlinkPriceFeedV2__factory>("ChainlinkPriceFeedV2", admin)
-        const ethPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 900)
-        const btcPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 900)
+        const chainlinkPriceFeedV2Factory = await smock.mock<ChainlinkPriceFeedV3__factory>(
+            "ChainlinkPriceFeedV3",
+            admin,
+        )
+        const ethPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 1e5, 10, 30 * 60)
+        const btcPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 1e5, 10, 30 * 60)
 
         await ethPriceFeed.deployed()
         await btcPriceFeed.deployed()
