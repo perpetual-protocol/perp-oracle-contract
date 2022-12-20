@@ -17,42 +17,37 @@ contract UniswapV3PriceFeed is IUniswapV3PriceFeed, BlockContext {
     // STATE
     //
 
-    address public pool;
-
     uint32 internal constant _TWAP_INTERVAL = 30 * 60;
 
+    address public pool;
+
     //
-    // EXTERNAL NON-VIEW
+    // EXTERNAL
     //
 
     constructor(address poolArg) {
-        // EPF_EANC: pool address is not contract
-        require(address(poolArg).isContract(), "EPF_EANC");
+        // UPF_PANC: pool address is not contract
+        require(address(poolArg).isContract(), "UPF_PANC");
 
         pool = poolArg;
     }
-
-    //
-    // EXTERNAL VIEW
-    //
 
     function getPrice() external view override returns (uint256) {
         uint256 markTwapX96 = _formatSqrtPriceX96ToPriceX96(_getSqrtMarkTwapX96(_TWAP_INTERVAL));
         return _formatX96ToX10_18(markTwapX96);
     }
 
-    //
-    // EXTERNAL PURE
-    //
-
     function decimals() external pure override returns (uint8) {
         return 18;
     }
 
-    /// @dev if twapInterval < 10 (should be less than 1 block), return mark price without twap directly,
+    //
+    // INTERNAL
+    //
+
+    /// @dev if twapInterval < 10 (should be less than 1 block), return mark price without twap directly
     ///      as twapInterval is too short and makes getting twap over such a short period meaningless
     function _getSqrtMarkTwapX96(uint32 twapInterval) internal view returns (uint160) {
-        // return the current price as twapInterval is too short/ meaningless
         if (twapInterval < 10) {
             (uint160 sqrtMarkPrice, , , , , , ) = IUniswapV3Pool(pool).slot0();
             return sqrtMarkPrice;
@@ -66,20 +61,6 @@ contract UniswapV3PriceFeed is IUniswapV3PriceFeed, BlockContext {
 
         // tick(imprecise as it's an integer) to price
         return TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / twapInterval));
-    }
-
-    /**
-     * @dev Returns the downcasted uint32 from uint256, reverting on
-     * overflow (when the input is greater than largest uint32).
-     *
-     * Counterpart to Solidity's `uint32` operator.
-     *
-     * Requirements:
-     *
-     * - input must fit into 32 bits
-     */
-    function _toUint32(uint256 value) internal pure returns (uint32 returnValue) {
-        require(((returnValue = uint32(value)) == value), "SafeCast: value doesn't fit in 32 bits");
     }
 
     function _formatSqrtPriceX96ToPriceX96(uint160 sqrtPriceX96) internal pure returns (uint256) {
