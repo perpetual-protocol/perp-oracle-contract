@@ -17,14 +17,6 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
     function dispatchPrice(uint256 interval) external;
 
-    function setChainlinkPriceFeedV3(ChainlinkPriceFeedV3 chainlinkPriceFeedV3) external;
-
-    function setUniswapV3PriceFeed(UniswapV3PriceFeed uniswapV3PriceFeed) external;
-
-    /// @dev once the destination of dispatchPrice() is fallen back to UniswapV3PriceFeed,
-    ///      admin has to call this function to switch back to ChainlinkPriceFeedV3; it won't recover automatically
-    function setPriceFeedStatus(Status status) external;
-
     /// @notice return price from Chainlink if Chainlink works as expected; else, price from UniswapV3PriceFeed
     /// @dev decimals of the return value is 18, which can be queried with the function decimals()
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
@@ -33,8 +25,6 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     function getChainlinkPriceFeedV3() external view returns (address);
 
     function getUniswapV3PriceFeed() external view returns (address);
-
-    function getStatus() external view returns (Status);
 
     function decimals() external pure returns (uint8);
 }
