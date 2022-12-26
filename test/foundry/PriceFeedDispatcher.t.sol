@@ -101,35 +101,48 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
         );
     }
 
-    function test_dispatchPrice_not__isToUseUniswapV3PriceFeed() public {
+    function test_dispatchPrice_not_isToUseUniswapV3PriceFeed() public {
         assertEq(uint256(_priceFeedDispatcher.getStatus()), uint256(Status.Chainlink));
+        assertEq(_priceFeedDispatcher.isToUseUniswapV3PriceFeed(), false);
         _dispatchPrice_and_assertEq_getDispatchedPrice(_chainlinkPrice);
     }
 
-    function test_dispatchPrice__isToUseUniswapV3PriceFeed_when__chainlinkPriceFeed_isTimedOut() public {
-        vm.mockCall(
-            address(_chainlinkPriceFeed),
-            abi.encodeWithSelector(_chainlinkPriceFeed.isTimedOut.selector),
-            abi.encode(true)
-        );
-
-        _expect_emit_event_from_PriceFeedDispatcher();
-        emit StatusUpdated(Status.UniswapV3);
-        _dispatchPrice_and_assertEq_getDispatchedPrice(_uniswapPrice);
-        assertEq(uint256(_priceFeedDispatcher.getStatus()), uint256(Status.UniswapV3));
-    }
-
-    function test_dispatchPrice__isToUseUniswapV3PriceFeed_when__status_is_already_UniswapV3() public {
+    function test_dispatchPrice_isToUseUniswapV3PriceFeed_when__status_is_already_UniswapV3() public {
         _priceFeedDispatcher.setPriceFeedStatus(Status.UniswapV3);
 
         _dispatchPrice_and_assertEq_getDispatchedPrice(_uniswapPrice);
         assertEq(uint256(_priceFeedDispatcher.getStatus()), uint256(Status.UniswapV3));
     }
 
-    function test_dispatchPrice_not__isToUseUniswapV3PriceFeed_when__uniswapV3PriceFeed_not_exist() public {
+    function test_dispatchPrice_isToUseUniswapV3PriceFeed_when__chainlinkPriceFeed_isTimedOut() public {
+        vm.mockCall(
+            address(_chainlinkPriceFeed),
+            abi.encodeWithSelector(_chainlinkPriceFeed.isTimedOut.selector),
+            abi.encode(true)
+        );
+        assertEq(_priceFeedDispatcher.isToUseUniswapV3PriceFeed(), true);
+
+        _expect_emit_event_from_PriceFeedDispatcher();
+        emit StatusUpdated(Status.UniswapV3);
+        _dispatchPrice_and_assertEq_getDispatchedPrice(_uniswapPrice);
+        assertEq(uint256(_priceFeedDispatcher.getStatus()), uint256(Status.UniswapV3));
+        assertEq(_priceFeedDispatcher.isToUseUniswapV3PriceFeed(), true);
+
+        // similar to the above case, if the status is already UniswapV3, then even if ChainlinkPriceFeed !isTimedOut,
+        // isToUseUniswapV3PriceFeed() will still be true
+        vm.mockCall(
+            address(_chainlinkPriceFeed),
+            abi.encodeWithSelector(_chainlinkPriceFeed.isTimedOut.selector),
+            abi.encode(false)
+        );
+        assertEq(_priceFeedDispatcher.isToUseUniswapV3PriceFeed(), true);
+    }
+
+    function test_dispatchPrice_not_isToUseUniswapV3PriceFeed_when__uniswapV3PriceFeed_not_exist() public {
         _priceFeedDispatcherUniswapV3PriceFeedNotExist.dispatchPrice(0);
         assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getDispatchedPrice(0), _chainlinkPrice);
         assertEq(uint256(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getStatus()), uint256(Status.Chainlink));
+        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.isToUseUniswapV3PriceFeed(), false);
 
         vm.mockCall(
             address(_chainlinkPriceFeed),
@@ -137,6 +150,7 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
             abi.encode(true)
         );
         assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getDispatchedPrice(0), _chainlinkPrice);
+        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.isToUseUniswapV3PriceFeed(), false);
     }
 
     function _dispatchPrice_and_assertEq_getDispatchedPrice(uint256 price) internal {
