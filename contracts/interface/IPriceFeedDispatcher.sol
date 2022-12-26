@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
 
-import { ChainlinkPriceFeedV3 } from "../ChainlinkPriceFeedV3.sol";
-import { UniswapV3PriceFeed } from "../UniswapV3PriceFeed.sol";
-
 interface IPriceFeedDispatcherEvent {
     enum Status { Chainlink, UniswapV3 }
     event StatusUpdated(Status status);
-    event ChainlinkPriceFeedV3Updated(ChainlinkPriceFeedV3 chainlinkPriceFeedV3);
-    event UniswapV3PriceFeedUpdated(UniswapV3PriceFeed uniswapV3PriceFeed);
+    event ChainlinkPriceFeedV3Updated(address chainlinkPriceFeedV3);
+    event UniswapV3PriceFeedUpdated(address uniswapV3PriceFeed);
 }
 
 interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
