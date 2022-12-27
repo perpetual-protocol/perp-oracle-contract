@@ -114,7 +114,7 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
         assertEq(uint256(_priceFeedDispatcher.getStatus()), uint256(Status.UniswapV3));
     }
 
-    function test_dispatchPrice_isToUseUniswapV3PriceFeed_when__chainlinkPriceFeed_isTimedOut() public {
+    function test_dispatchPrice_isToUseUniswapV3PriceFeed_when_different__chainlinkPriceFeed_isTimedOut() public {
         vm.mockCall(
             address(_chainlinkPriceFeed),
             abi.encodeWithSelector(_chainlinkPriceFeed.isTimedOut.selector),
