@@ -6,12 +6,11 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { BlockContext } from "./base/BlockContext.sol";
-import { Ownable } from "./base/Ownable.sol";
 import { IPriceFeedDispatcher } from "./interface/IPriceFeedDispatcher.sol";
 import { UniswapV3PriceFeed } from "./UniswapV3PriceFeed.sol";
 import { ChainlinkPriceFeedV3 } from "./ChainlinkPriceFeedV3.sol";
 
-contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
+contract PriceFeedDispatcher is IPriceFeedDispatcher, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
@@ -37,7 +36,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
     /// @inheritdoc IPriceFeedDispatcher
     function dispatchPrice(uint256 interval) external override {
-        if (_isToUseUniswapV3PriceFeed()) {
+        if (isToUseUniswapV3PriceFeed()) {
             if (_status != Status.UniswapV3) {
                 _status = Status.UniswapV3;
                 emit StatusUpdated(_status);
@@ -48,46 +47,13 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         _chainlinkPriceFeedV3.cacheTwap(interval);
     }
 
-    function setPriceFeedStatus(Status status) external override onlyOwner {
-        if (status == Status.UniswapV3) {
-            // PFD_UU: UniswapV3PriceFeed uninitialized
-            require(address(_uniswapV3PriceFeed) != address(0), "PFD_UU");
-        }
-
-        _status = status;
-        emit StatusUpdated(_status);
-    }
-
-    function setUniswapV3PriceFeed(UniswapV3PriceFeed uniswapV3PriceFeed) external override onlyOwner {
-        // PFD_UECOU: UniswapV3PriceFeed (has to be) either contract or uninitialized
-        require(address(uniswapV3PriceFeed) == address(0) || address(uniswapV3PriceFeed).isContract(), "PFD_UECOU");
-
-        if (address(uniswapV3PriceFeed) == address(0)) {
-            // PFD_UNS: UniswapV3PriceFeed is not settable
-            require(_status != Status.UniswapV3, "PFD_UNS");
-        }
-
-        _uniswapV3PriceFeed = uniswapV3PriceFeed;
-
-        emit UniswapV3PriceFeedUpdated(uniswapV3PriceFeed);
-    }
-
-    function setChainlinkPriceFeedV3(ChainlinkPriceFeedV3 chainlinkPriceFeedV3) external override onlyOwner {
-        // PFD_CNC: ChainlinkPriceFeed is not contract
-        require(address(chainlinkPriceFeedV3).isContract(), "PFD_CNC");
-
-        _chainlinkPriceFeedV3 = chainlinkPriceFeedV3;
-
-        emit ChainlinkPriceFeedV3Updated(chainlinkPriceFeedV3);
-    }
-
     //
     // EXTERNAL VIEW
     //
 
     /// @inheritdoc IPriceFeedDispatcher
     function getDispatchedPrice(uint256 interval) external view override returns (uint256) {
-        if (_isToUseUniswapV3PriceFeed()) {
+        if (isToUseUniswapV3PriceFeed()) {
             return _formatFromDecimalsToX10_18(_uniswapV3PriceFeed.getPrice(), _uniswapV3PriceFeed.decimals());
         }
 
@@ -96,10 +62,6 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
                 _chainlinkPriceFeedV3.getCachedTwap(interval),
                 _chainlinkPriceFeedV3.decimals()
             );
-    }
-
-    function getStatus() external view override returns (Status) {
-        return _status;
     }
 
     function getChainlinkPriceFeedV3() external view override returns (address) {
@@ -115,14 +77,18 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     }
 
     //
-    // INTERNAL
+    // PUBLIC
     //
 
-    function _isToUseUniswapV3PriceFeed() internal view returns (bool) {
+    function isToUseUniswapV3PriceFeed() public view returns (bool) {
         return
             address(_uniswapV3PriceFeed) != address(0) &&
             (_chainlinkPriceFeedV3.isTimedOut() || _status == Status.UniswapV3);
     }
+
+    //
+    // INTERNAL
+    //
 
     function _formatFromDecimalsToX10_18(uint256 value, uint8 fromDecimals) internal pure returns (uint256) {
         uint8 toDecimals = _DECIMALS;
