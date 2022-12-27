@@ -82,7 +82,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
     }
 
     function isTimedOut() external view override returns (bool) {
-        return _lastValidTimestamp != 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+        return _lastValidTimestamp > 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
     }
 
     function getFreezedReason() external view override returns (FreezedReason) {
@@ -115,18 +115,16 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
 
     function _cachePrice() internal {
         ChainlinkResponse memory response = _getChainlinkResponse();
-        if (_lastValidTimestamp != 0 && _lastValidTimestamp == response.updatedAt) {
+        if (_isAlreadyLatestCache(response)) {
             return;
         }
 
         FreezedReason freezedReason = _getFreezedReason(response);
-        if (freezedReason == FreezedReason.NotFreezed) {
+        if (_isNotFreezed(freezedReason)) {
             _lastValidPrice = uint256(response.answer);
             _lastValidTimestamp = response.updatedAt;
-        } else if (
-            freezedReason == FreezedReason.AnswerIsOutlier &&
-            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
-        ) {
+        }
+        if (_isAnswerIsOutlierAndOverOutlierCoolDownPeriod(freezedReason)) {
             (_lastValidPrice, _lastValidTimestamp) = _getPriceAndTimestampAfterOutlierCoolDown(response.answer);
         }
 
@@ -135,20 +133,19 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
 
     function _getCachePrice() internal view returns (uint256, uint256) {
         ChainlinkResponse memory response = _getChainlinkResponse();
-        if (_lastValidTimestamp != 0 && _lastValidTimestamp == response.updatedAt) {
+        if (_isAlreadyLatestCache(response)) {
             return (_lastValidPrice, _lastValidTimestamp);
         }
 
         FreezedReason freezedReason = _getFreezedReason(response);
-        if (freezedReason == FreezedReason.NotFreezed) {
+        if (_isNotFreezed(freezedReason)) {
             return (uint256(response.answer), response.updatedAt);
-        } else if (
-            freezedReason == FreezedReason.AnswerIsOutlier &&
-            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod)
-        ) {
+        }
+        if (_isAnswerIsOutlierAndOverOutlierCoolDownPeriod(freezedReason)) {
             return (_getPriceAndTimestampAfterOutlierCoolDown(response.answer));
         }
 
+        // if freezed || (AnswerIsOutlier && not yet over _outlierCoolDownPeriod)
         return (_lastValidPrice, _lastValidTimestamp);
     }
 
@@ -178,6 +175,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         }
     }
 
+    function _isAlreadyLatestCache(ChainlinkResponse memory response) internal view returns (bool) {
+        return _lastValidTimestamp > 0 && _lastValidTimestamp == response.updatedAt;
+    }
+
     /// @dev see IChainlinkPriceFeedV3Event.FreezedReason for each FreezedReason
     function _getFreezedReason(ChainlinkResponse memory response) internal view returns (FreezedReason) {
         if (!response.success) {
@@ -199,7 +200,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
         if (response.answer <= 0) {
             return FreezedReason.NonPositiveAnswer;
         }
-        if (_lastValidPrice != 0 && _lastValidTimestamp != 0 && _isOutlier(uint256(response.answer))) {
+        if (_lastValidPrice > 0 && _lastValidTimestamp > 0 && _isOutlier(uint256(response.answer))) {
             return FreezedReason.AnswerIsOutlier;
         }
 
@@ -221,11 +222,18 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
             uint256(answer) > _lastValidPrice
                 ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
                 : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
+        uint256 maxDeviatedPrice = _lastValidPrice.mul(deviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
 
-        return (_mulRatio(_lastValidPrice, deviationRatio), _blockTimestamp());
+        return (maxDeviatedPrice, _blockTimestamp());
     }
 
-    function _mulRatio(uint256 value, uint24 ratio) internal pure returns (uint256) {
-        return value.mul(ratio).div(_ONE_HUNDRED_PERCENT_RATIO);
+    function _isNotFreezed(FreezedReason freezedReason) internal view returns (bool) {
+        return freezedReason == FreezedReason.NotFreezed;
+    }
+
+    function _isAnswerIsOutlierAndOverOutlierCoolDownPeriod(FreezedReason freezedReason) internal view returns (bool) {
+        return
+            freezedReason == FreezedReason.AnswerIsOutlier &&
+            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod);
     }
 }
