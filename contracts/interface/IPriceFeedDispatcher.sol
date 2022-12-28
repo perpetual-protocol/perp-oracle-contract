@@ -13,9 +13,6 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
     function dispatchPrice(uint256 interval) external;
 
-    /// @notice can only be initialized once by owner
-    function setUniswapV3PriceFeed(address uniswapV3PriceFeed) external;
-
     /// @notice return price from UniswapV3PriceFeed if _uniswapV3PriceFeed is ready to be switched to AND
     ///         1. _status is already UniswapV3PriceFeed OR
     ///         2. ChainlinkPriceFeedV3.isTimedOut()

@@ -45,8 +45,8 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         _chainlinkPriceFeedV3.cacheTwap(interval);
     }
 
-    /// @inheritdoc IPriceFeedDispatcher
-    function setUniswapV3PriceFeed(address uniswapV3PriceFeed) external override onlyOwner {
+    /// @dev can only be initialized once by the owner
+    function setUniswapV3PriceFeed(address uniswapV3PriceFeed) external onlyOwner {
         // PFD_UCAU: UniswapV3PriceFeed (has to be) a contract and uninitialized
         require(address(_uniswapV3PriceFeed) == address(0) && uniswapV3PriceFeed.isContract(), "PFD_UCAU");
 
