@@ -4,7 +4,6 @@ pragma solidity 0.7.6;
 interface IPriceFeedDispatcherEvent {
     enum Status { Chainlink, UniswapV3 }
     event StatusUpdated(Status status);
-    event ChainlinkPriceFeedV3Updated(address chainlinkPriceFeedV3);
     event UniswapV3PriceFeedUpdated(address uniswapV3PriceFeed);
 }
 
@@ -13,6 +12,9 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     /// @dev this method is called by every tx that settles funding in Exchange.settleFunding() -> BaseToken.cacheTwap()
     /// @param interval only useful when using Chainlink; UniswapV3PriceFeed has its own fixed interval
     function dispatchPrice(uint256 interval) external;
+
+    /// @notice can only be initialized once by owner
+    function setUniswapV3PriceFeed(address uniswapV3PriceFeed) external;
 
     /// @notice return price from UniswapV3PriceFeed if _uniswapV3PriceFeed is ready to be switched to AND
     ///         1. _status is already UniswapV3PriceFeed OR

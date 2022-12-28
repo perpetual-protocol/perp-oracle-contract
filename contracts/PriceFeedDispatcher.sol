@@ -4,13 +4,14 @@ pragma abicoder v2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { IPriceFeedDispatcher } from "./interface/IPriceFeedDispatcher.sol";
 import { UniswapV3PriceFeed } from "./UniswapV3PriceFeed.sol";
 import { ChainlinkPriceFeedV3 } from "./ChainlinkPriceFeedV3.sol";
 
-contract PriceFeedDispatcher is IPriceFeedDispatcher, BlockContext {
+contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
@@ -24,14 +25,11 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, BlockContext {
     // EXTERNAL NON-VIEW
     //
 
-    constructor(UniswapV3PriceFeed uniswapV3PriceFeed, ChainlinkPriceFeedV3 chainlinkPriceFeedV3) {
-        // PFD_UECOU: UniswapV3PriceFeed (has to be) either contract or uninitialized
-        require(address(uniswapV3PriceFeed) == address(0) || address(uniswapV3PriceFeed).isContract(), "PFD_UECOU");
+    constructor(address chainlinkPriceFeedV3) {
         // PFD_CNC: ChainlinkPriceFeed is not contract
-        require(address(chainlinkPriceFeedV3).isContract(), "PFD_CNC");
+        require(chainlinkPriceFeedV3.isContract(), "PFD_CNC");
 
-        _uniswapV3PriceFeed = uniswapV3PriceFeed;
-        _chainlinkPriceFeedV3 = chainlinkPriceFeedV3;
+        _chainlinkPriceFeedV3 = ChainlinkPriceFeedV3(chainlinkPriceFeedV3);
     }
 
     /// @inheritdoc IPriceFeedDispatcher
@@ -45,6 +43,15 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, BlockContext {
         }
 
         _chainlinkPriceFeedV3.cacheTwap(interval);
+    }
+
+    /// @inheritdoc IPriceFeedDispatcher
+    function setUniswapV3PriceFeed(address uniswapV3PriceFeed) external override onlyOwner {
+        // PFD_UCAU: UniswapV3PriceFeed (has to be) a contract and uninitialized
+        require(address(_uniswapV3PriceFeed) == address(0) && uniswapV3PriceFeed.isContract(), "PFD_UCAU");
+
+        _uniswapV3PriceFeed = UniswapV3PriceFeed(uniswapV3PriceFeed);
+        emit UniswapV3PriceFeedUpdated(uniswapV3PriceFeed);
     }
 
     //
