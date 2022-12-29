@@ -4,7 +4,6 @@ pragma solidity 0.7.6;
 interface IPriceFeedDispatcherEvent {
     enum Status { Chainlink, UniswapV3 }
     event StatusUpdated(Status status);
-    event ChainlinkPriceFeedV3Updated(address chainlinkPriceFeedV3);
     event UniswapV3PriceFeedUpdated(address uniswapV3PriceFeed);
 }
 

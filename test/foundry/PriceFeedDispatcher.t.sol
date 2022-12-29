@@ -10,9 +10,7 @@ import { PriceFeedDispatcher } from "../../contracts/PriceFeedDispatcher.sol";
 import { IPriceFeedDispatcherEvent } from "../../contracts/interface/IPriceFeedDispatcher.sol";
 
 contract PriceFeedDispatcherMocked is PriceFeedDispatcher {
-    constructor(UniswapV3PriceFeed uniswapV3PriceFeed, ChainlinkPriceFeedV3 chainlinkPriceFeedV3)
-        PriceFeedDispatcher(uniswapV3PriceFeed, chainlinkPriceFeedV3)
-    {}
+    constructor(address chainlinkPriceFeedV3) PriceFeedDispatcher(chainlinkPriceFeedV3) {}
 
     function setPriceFeedStatus(Status status) external {
         _status = status;
@@ -27,7 +25,7 @@ contract PriceFeedDispatcherSetup is Test {
     UniswapV3PriceFeed internal _uniswapV3PriceFeed;
     ChainlinkPriceFeedV3 internal _chainlinkPriceFeed;
     PriceFeedDispatcherMocked internal _priceFeedDispatcher;
-    PriceFeedDispatcherMocked internal _priceFeedDispatcherUniswapV3PriceFeedNotExist;
+    PriceFeedDispatcherMocked internal _priceFeedDispatcherWithUniswapV3PriceFeedUninitialized;
 
     function setUp() public virtual {
         _uniswapV3PriceFeed = _create_uniswapV3PriceFeed();
@@ -48,27 +46,49 @@ contract PriceFeedDispatcherSetup is Test {
     }
 
     function _create_PriceFeedDispatcher() internal returns (PriceFeedDispatcherMocked) {
-        return new PriceFeedDispatcherMocked(_uniswapV3PriceFeed, _chainlinkPriceFeed);
+        return new PriceFeedDispatcherMocked(address(_chainlinkPriceFeed));
     }
 
-    function _create_PriceFeedDispatcherUniswapV3PriceFeedNotExist() internal returns (PriceFeedDispatcherMocked) {
-        return new PriceFeedDispatcherMocked(UniswapV3PriceFeed(0), _chainlinkPriceFeed);
+    function _create_PriceFeedDispatcher_and_setUniswapV3PriceFeed() internal returns (PriceFeedDispatcherMocked) {
+        PriceFeedDispatcherMocked priceFeedDispatcher = _create_PriceFeedDispatcher();
+        priceFeedDispatcher.setUniswapV3PriceFeed(address(_uniswapV3PriceFeed));
+        return priceFeedDispatcher;
     }
 }
 
-contract PriceFeedDispatcherConstructorTest is PriceFeedDispatcherSetup {
-    function test_UniswapV3PriceFeed_can_be_zero_address() public {
-        _priceFeedDispatcher = _create_PriceFeedDispatcherUniswapV3PriceFeedNotExist();
-    }
-
-    function test_PFD_UECOU() public {
-        vm.expectRevert(bytes("PFD_UECOU"));
-        _priceFeedDispatcher = new PriceFeedDispatcherMocked(UniswapV3PriceFeed(makeAddr("HA")), _chainlinkPriceFeed);
-    }
-
+contract PriceFeedDispatcherConstructorAndSetterTest is IPriceFeedDispatcherEvent, PriceFeedDispatcherSetup {
     function test_PFD_CNC() public {
         vm.expectRevert(bytes("PFD_CNC"));
-        _priceFeedDispatcher = new PriceFeedDispatcherMocked(_uniswapV3PriceFeed, ChainlinkPriceFeedV3(0));
+        _priceFeedDispatcher = new PriceFeedDispatcherMocked(address(0));
+
+        vm.expectRevert(bytes("PFD_CNC"));
+        _priceFeedDispatcher = new PriceFeedDispatcherMocked(makeAddr("HA"));
+    }
+
+    function test_PFD_UCAU() public {
+        _priceFeedDispatcher = _create_PriceFeedDispatcher();
+
+        vm.expectRevert(bytes("PFD_UCAU"));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(address(0));
+
+        vm.expectRevert(bytes("PFD_UCAU"));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(makeAddr("HA"));
+    }
+
+    function test_cannot_setUniswapV3PriceFeed_by_non_owner() public {
+        _priceFeedDispatcher = _create_PriceFeedDispatcher();
+
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.prank(makeAddr("HA"));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(address(_uniswapV3PriceFeed));
+    }
+
+    function test_setUniswapV3PriceFeed_should_emit_event() public {
+        _priceFeedDispatcher = _create_PriceFeedDispatcher();
+
+        vm.expectEmit(false, false, false, true, address(_priceFeedDispatcher));
+        emit UniswapV3PriceFeedUpdated(address(_uniswapV3PriceFeed));
+        _priceFeedDispatcher.setUniswapV3PriceFeed(address(_uniswapV3PriceFeed));
     }
 }
 
@@ -79,8 +99,8 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
 
     function setUp() public virtual override {
         PriceFeedDispatcherSetup.setUp();
-        _priceFeedDispatcher = _create_PriceFeedDispatcher();
-        _priceFeedDispatcherUniswapV3PriceFeedNotExist = _create_PriceFeedDispatcherUniswapV3PriceFeedNotExist();
+        _priceFeedDispatcher = _create_PriceFeedDispatcher_and_setUniswapV3PriceFeed();
+        _priceFeedDispatcherWithUniswapV3PriceFeedUninitialized = _create_PriceFeedDispatcher();
 
         vm.mockCall(
             address(_uniswapV3PriceFeed),
@@ -138,19 +158,22 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
         assertEq(_priceFeedDispatcher.isToUseUniswapV3PriceFeed(), true);
     }
 
-    function test_dispatchPrice_not_isToUseUniswapV3PriceFeed_when__uniswapV3PriceFeed_not_exist() public {
-        _priceFeedDispatcherUniswapV3PriceFeedNotExist.dispatchPrice(0);
-        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getDispatchedPrice(0), _chainlinkPrice);
-        assertEq(uint256(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getStatus()), uint256(Status.Chainlink));
-        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.isToUseUniswapV3PriceFeed(), false);
+    function test_dispatchPrice_not_isToUseUniswapV3PriceFeed_when__uniswapV3PriceFeed_uninitialized() public {
+        _priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.dispatchPrice(0);
+        assertEq(_priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.getDispatchedPrice(0), _chainlinkPrice);
+        assertEq(
+            uint256(_priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.getStatus()),
+            uint256(Status.Chainlink)
+        );
+        assertEq(_priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.isToUseUniswapV3PriceFeed(), false);
 
         vm.mockCall(
             address(_chainlinkPriceFeed),
             abi.encodeWithSelector(_chainlinkPriceFeed.isTimedOut.selector),
             abi.encode(true)
         );
-        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.getDispatchedPrice(0), _chainlinkPrice);
-        assertEq(_priceFeedDispatcherUniswapV3PriceFeedNotExist.isToUseUniswapV3PriceFeed(), false);
+        assertEq(_priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.getDispatchedPrice(0), _chainlinkPrice);
+        assertEq(_priceFeedDispatcherWithUniswapV3PriceFeedUninitialized.isToUseUniswapV3PriceFeed(), false);
     }
 
     function _dispatchPrice_and_assertEq_getDispatchedPrice(uint256 price) internal {
