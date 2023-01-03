@@ -7,10 +7,11 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
 import { IChainlinkPriceFeedV3 } from "./interface/IChainlinkPriceFeedV3.sol";
+import { IPriceFeedUpdate } from "./interface/IPriceFeedUpdate.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockContext, CachedTwap {
     using SafeMath for uint256;
     using Address for address;
 
@@ -54,7 +55,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, BlockContext, CachedTwap
     /// @notice anyone can help with updating
     /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
     ///      with the same timestamp will get reverted in CumulativeTwap._update()
-    function update() external {
+    function update() external override {
         cacheTwap(0);
     }
 
