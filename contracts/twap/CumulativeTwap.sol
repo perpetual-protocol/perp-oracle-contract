@@ -22,10 +22,11 @@ contract CumulativeTwap is BlockContext {
     // STATE
     //
 
-    uint8 public currentObservationIndex;
+    uint16 public currentObservationIndex;
+    uint16 internal constant UINT16_MAX = 65535;
     // let's use 15 mins and 1 hr twap as example
     // if the price is updated every 15 secs, then we need 60 and 240 historical data for 15mins and 1hr twap
-    Observation[256] public observations;
+    Observation[UINT16_MAX + 1] public observations;
 
     //
     // INTERNAL
@@ -47,8 +48,8 @@ contract CumulativeTwap is BlockContext {
             return;
         }
 
-        // overflow of currentObservationIndex is expected since currentObservationIndex is uint8 (0 - 255),
-        // so 255 + 1 will be 0
+        // overflow of currentObservationIndex is expected since currentObservationIndex is uint16 (0 - 65535),
+        // so 65535 + 1 will be 0
         currentObservationIndex++;
 
         uint256 timestampDiff = lastUpdatedTimestamp - lastObservation.timestamp;
@@ -120,47 +121,67 @@ contract CumulativeTwap is BlockContext {
         return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
 
+    // targetTimestamp = "uniswap's uint32 target = time - secondsAgo"
+    // _blockTimestamp = time
+    // secondsAgo = interval
     function _getSurroundingObservations(uint256 targetTimestamp)
         internal
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
     {
-        uint8 index = currentObservationIndex;
-        uint8 beforeOrAtIndex;
-        uint8 atOrAfterIndex;
+        uint16 index = currentObservationIndex;
+        uint16 beforeOrAtIndex = index;
+        uint16 atOrAfterIndex;
 
-        // run at most 256 times
-        uint256 observationLen = observations.length;
+        // if the target is chronologically at or after the newest observation, we can early return
+        if (observations[index].timestamp <= targetTimestamp) {
+            atOrAfterIndex = beforeOrAtIndex;
+
+            return (observations[beforeOrAtIndex], observations[atOrAfterIndex]);
+        }
+
+        // now, set before to the oldest observation
+        beforeOrAtIndex = (index + 1);
+        if (observations[beforeOrAtIndex].timestamp == 0) {
+            beforeOrAtIndex = 0;
+        }
+
+        // ensure that the target is chronologically at or after the oldest observation
+        // CT_NEH: no enough historical data
+        require(observations[beforeOrAtIndex].timestamp <= targetTimestamp, "CT_NEH");
+
+        return binarySearch(targetTimestamp);
+    }
+
+    function binarySearch(uint256 targetTimestamp)
+        private
+        view
+        returns (Observation memory beforeOrAt, Observation memory atOrAfter)
+    {
+        uint256 l = currentObservationIndex + 1; // oldest observation
+        uint256 r = l + UINT16_MAX; // newest observation
         uint256 i;
-        for (i = 0; i < observationLen; i++) {
-            if (observations[index].timestamp <= targetTimestamp) {
-                // if the next observation is empty, using the last one
-                // it implies the historical data is not enough
-                if (observations[index].timestamp == 0) {
-                    atOrAfterIndex = beforeOrAtIndex = index + 1;
-                    break;
-                }
-                beforeOrAtIndex = index;
-                atOrAfterIndex = beforeOrAtIndex + 1;
-                break;
+
+        while (true) {
+            i = (l + r) / 2;
+
+            beforeOrAt = observations[i % UINT16_MAX];
+
+            // we've landed on an uninitialized observation, keep searching higher (more recently)
+            if (beforeOrAt.timestamp == 0) {
+                l = i + 1;
+                continue;
             }
-            index--;
-        }
 
-        // not enough historical data to query
-        if (i == observationLen) {
-            // CT_NEH: no enough historical data
-            revert("CT_NEH");
-        }
+            atOrAfter = observations[(i + 1) % UINT16_MAX];
 
-        beforeOrAt = observations[beforeOrAtIndex];
-        atOrAfter = observations[atOrAfterIndex];
+            bool targetAtOrAfter = beforeOrAt.timestamp <= targetTimestamp;
 
-        // if the timestamp of the right bound is earlier than timestamp of the left bound,
-        // either there's only one record, or atOrAfterIndex overflows
-        // in these cases, we set the right bound the same as the left bound.
-        if (atOrAfter.timestamp < beforeOrAt.timestamp) {
-            atOrAfter = beforeOrAt;
+            // check if we've found the answer!
+            if (targetAtOrAfter && targetTimestamp <= atOrAfter.timestamp) break;
+
+            if (!targetAtOrAfter) r = i - 1;
+            else l = i + 1;
         }
     }
 }
