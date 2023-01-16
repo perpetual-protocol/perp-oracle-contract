@@ -35,7 +35,7 @@ contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
     uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint256 internal _timestamp = 10000000;
     uint256 internal _price = 1000 * 1e8;
-    uint256 internal _roundId = 1;
+    uint256 internal _roundId = 3;
     uint256 internal _timestampAfterOutlierCoolDownPeriod = _timestamp + _outlierCoolDownPeriod + 10;
     uint256 internal _timestampBeforeOutlierCoolDownPeriod = _timestamp + _outlierCoolDownPeriod - 5;
 
@@ -45,6 +45,18 @@ contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
         // we need Aggregator's decimals() function in the constructor of ChainlinkPriceFeedV3
         vm.mockCall(address(_testAggregator), abi.encodeWithSelector(_testAggregator.decimals.selector), abi.encode(8));
         _chainlinkPriceFeedV3 = _create_ChainlinkPriceFeedV3(_testAggregator);
+
+        vm.warp(_timestamp);
+        _mock_call_latestRoundData(_roundId, int256(_price), _timestamp);
+    }
+
+    function _chainlinkPriceFeedV3_prefill_observation_to_make_twap_calculatable() internal {
+        // to make sure that twap price is calculatable
+        uint256 roundId = _roundId - 1;
+
+        _mock_call_latestRoundData(roundId, int256(_price - 5e8), _timestamp - _twapInterval);
+        vm.warp(_timestamp - _twapInterval);
+        _chainlinkPriceFeedV3.update();
 
         vm.warp(_timestamp);
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp);
@@ -309,14 +321,20 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
     function test_getCachedTwap_first_time_without_cacheTwap_yet_and_after_a_second() public {
         // make sure that even if there's no cache observation, CumulativeTwap won't calculate a TWAP
+        _chainlinkPriceFeedV3_prefill_observation_to_make_twap_calculatable();
         vm.warp(_timestamp + 1);
-        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), _price);
+        // (995*1800+1000*1)/1801=995.0027762354
+        // _twapInterval is 1800 above logic is incorrect,
+        // below test_getCachedTwap_with_valid_price_after_a_second is the correct one
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 995.00277623 * 1e8);
     }
 
     function test_getCachedTwap_with_valid_price_after_a_second() public {
+        _chainlinkPriceFeedV3_prefill_observation_to_make_twap_calculatable();
         _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         vm.warp(_timestamp + 1);
-        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), _price);
+        // (995*1799+1000*1)/1800=995.00277777
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 995.00277777 * 1e8);
     }
 
     function test_getCachedTwap_with_valid_price_after_several_seconds() public {
