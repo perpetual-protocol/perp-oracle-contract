@@ -20,6 +20,9 @@ const config: HardhatUserConfig = {
             },
         },
     },
+    mocha: {
+        timeout: 100000,
+    },
     networks: {
         hardhat: {
             allowUnlimitedContractSize: true,
