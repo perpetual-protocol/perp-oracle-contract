@@ -23,10 +23,10 @@ contract CumulativeTwap is BlockContext {
     //
 
     uint16 public currentObservationIndex;
-    uint16 internal constant UINT16_MAX = 65535;
+    uint16 internal constant MAX_OBSERVATION = 1800;
     // let's use 15 mins and 1 hr twap as example
-    // if the price is updated every 15 secs, then we need 60 and 240 historical data for 15mins and 1hr twap
-    Observation[UINT16_MAX + 1] public observations;
+    // if the price is updated every 2 secs, 1hr twap Observation should have 60 / 2 * 60 = 1800 slots
+    Observation[MAX_OBSERVATION + 1] public observations;
 
     //
     // INTERNAL
@@ -48,9 +48,8 @@ contract CumulativeTwap is BlockContext {
             return;
         }
 
-        // overflow of currentObservationIndex is expected since currentObservationIndex is uint16 (0 - 65535),
-        // so 65535 + 1 will be 0
-        currentObservationIndex++;
+        // ring buffer index, make sure the currentObservationIndex is less than MAX_OBSERVATION
+        currentObservationIndex = (currentObservationIndex + 1) % MAX_OBSERVATION;
 
         uint256 timestampDiff = lastUpdatedTimestamp - lastObservation.timestamp;
         observations[currentObservationIndex] = Observation({
@@ -138,7 +137,7 @@ contract CumulativeTwap is BlockContext {
         }
 
         // now, set before to the oldest observation
-        beforeOrAtIndex = (index + 1);
+        beforeOrAtIndex = (index + 1) % MAX_OBSERVATION;
         if (observations[beforeOrAtIndex].timestamp == 0) {
             beforeOrAtIndex = 0;
         }
@@ -155,14 +154,14 @@ contract CumulativeTwap is BlockContext {
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
     {
-        uint256 l = currentObservationIndex + 1; // oldest observation
-        uint256 r = l + UINT16_MAX; // newest observation
+        uint256 l = (currentObservationIndex + 1) % MAX_OBSERVATION; // oldest observation
+        uint256 r = l + MAX_OBSERVATION - 1; // newest observation
         uint256 i;
 
         while (true) {
             i = (l + r) / 2;
 
-            beforeOrAt = observations[i % UINT16_MAX];
+            beforeOrAt = observations[i % MAX_OBSERVATION];
 
             // we've landed on an uninitialized observation, keep searching higher (more recently)
             if (beforeOrAt.timestamp == 0) {
@@ -170,7 +169,7 @@ contract CumulativeTwap is BlockContext {
                 continue;
             }
 
-            atOrAfter = observations[(i + 1) % UINT16_MAX];
+            atOrAfter = observations[(i + 1) % MAX_OBSERVATION];
 
             bool targetAtOrAfter = beforeOrAt.timestamp <= targetTimestamp;
 
