@@ -138,26 +138,22 @@ contract CumulativeTwap is BlockContext {
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
     {
-        uint16 index = currentObservationIndex;
-        uint16 beforeOrAtIndex = index;
-        uint16 atOrAfterIndex;
+        beforeOrAt = observations[currentObservationIndex];
 
         // if the target is chronologically at or after the newest observation, we can early return
-        if (observations[index].timestamp <= targetTimestamp) {
-            atOrAfterIndex = beforeOrAtIndex;
-
-            return (observations[beforeOrAtIndex], observations[atOrAfterIndex]);
+        if (observations[currentObservationIndex].timestamp <= targetTimestamp) {
+            return (beforeOrAt, beforeOrAt);
         }
 
         // now, set before to the oldest observation
-        beforeOrAtIndex = (index + 1) % MAX_OBSERVATION;
-        if (observations[beforeOrAtIndex].timestamp == 0) {
-            beforeOrAtIndex = 0;
+        beforeOrAt = observations[(currentObservationIndex + 1) % MAX_OBSERVATION];
+        if (beforeOrAt.timestamp == 0) {
+            beforeOrAt = observations[0];
         }
 
         // ensure that the target is chronologically at or after the oldest observation
         // CT_NEH: no enough historical data
-        require(observations[beforeOrAtIndex].timestamp <= targetTimestamp, "CT_NEH");
+        require(beforeOrAt.timestamp <= targetTimestamp, "CT_NEH");
 
         return binarySearch(targetTimestamp);
     }
