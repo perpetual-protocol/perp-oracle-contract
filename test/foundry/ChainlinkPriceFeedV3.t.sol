@@ -16,6 +16,7 @@ contract ChainlinkPriceFeedV3ConstructorTest is Setup {
 }
 
 contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
+    using stdStorage for StdStorage;
     uint24 internal constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint256 internal _timestamp = 10000000;
     uint256 internal _price = 1000 * 1e8;
