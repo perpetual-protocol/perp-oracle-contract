@@ -94,6 +94,21 @@ contract CumulativeTwap is BlockContext {
                 )
             );
 
+        // case 1
+        //                                 beforeOrAt     (it doesn't matter)
+        //                              targetTimestamp   atOrAfter
+        //      ------------------+-------------+---------------+----------------->
+
+        // case 2
+        //          (it doesn't matter)     atOrAfter
+        //                   beforeOrAt   targetTimestamp
+        //      ------------------+-------------+--------------------------------->
+
+        // case 3
+        //                   beforeOrAt   targetTimestamp   atOrAfter
+        //      ------------------+-------------+---------------+----------------->
+
+        // original imprecisive one
         //
         //                   beforeOrAt                    atOrAfter
         //      ------------------+-------------+---------------+------------------
@@ -105,20 +120,28 @@ contract CumulativeTwap is BlockContext {
         (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 targetCumulativePrice;
 
-        // case1. not enough historical data or just enough (`==` case)
-        if (targetTimestamp <= beforeOrAt.timestamp) {
-            targetTimestamp = beforeOrAt.timestamp;
+        // case1. left boundary
+        if (targetTimestamp == beforeOrAt.timestamp) {
             targetCumulativePrice = beforeOrAt.priceCumulative;
         }
-        // case2. the latest data is older than or equal the request
-        else if (atOrAfter.timestamp <= targetTimestamp) {
-            targetTimestamp = atOrAfter.timestamp;
+        // case2. right boundary
+        else if (atOrAfter.timestamp == targetTimestamp) {
             targetCumulativePrice = atOrAfter.priceCumulative;
         }
         // case3. in the middle
         else {
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+            // it implies beforeOrAt = observations[currentObservationIndex]
+            // which means there's no atOrAfter
+            if (atOrAfter.timestamp == 0) {
+                atOrAfter.priceCumulative =
+                    beforeOrAt.priceCumulative +
+                    (beforeOrAt.price * (targetTimestamp - beforeOrAt.timestamp));
+                atOrAfter.timestamp = targetTimestamp;
+            }
+
             uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+
             targetCumulativePrice = beforeOrAt.priceCumulative.add(
                 ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
                     observationTimeDelta
@@ -126,11 +149,7 @@ contract CumulativeTwap is BlockContext {
             );
         }
 
-        // 1. if observation has no data / only one data, _calculateTwap returns 0 (above case 1)
-        // 2. if not enough data, _calculateTwap returns timestampDiff twap price (above case 1)
-        // 3. if exceed the observations' length, _getSurroundingObservations will get reverted
-        uint256 timestampDiff = currentTimestamp - targetTimestamp;
-        return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
+        return currentCumulativePrice.sub(targetCumulativePrice).div(interval);
     }
 
     function _getSurroundingObservations(uint256 targetTimestamp)
@@ -142,12 +161,16 @@ contract CumulativeTwap is BlockContext {
 
         // if the target is chronologically at or after the newest observation, we can early return
         if (observations[currentObservationIndex].timestamp <= targetTimestamp) {
-            return (beforeOrAt, beforeOrAt);
+            // if the observation is the same as the targetTimestamp
+            // atOrAfter doesn't matter
+            // if the observation is less than the targetTimestamp
+            // atOrAfter repesents latest price and timestamp
+            return (beforeOrAt, atOrAfter);
         }
 
         // now, set before to the oldest observation
-        beforeOrAt = observations[(currentObservationIndex + 1) % MAX_OBSERVATION];
-        if (beforeOrAt.timestamp == 0) {
+        beforeOrAt = observations[currentObservationIndex + 1];
+        if (observations[currentObservationIndex].timestamp == 0) {
             beforeOrAt = observations[0];
         }
 
