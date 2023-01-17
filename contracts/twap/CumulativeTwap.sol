@@ -134,9 +134,6 @@ contract CumulativeTwap is BlockContext {
         return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
 
-    // targetTimestamp = "uniswap's uint32 target = time - secondsAgo"
-    // _blockTimestamp = time
-    // secondsAgo = interval
     function _getSurroundingObservations(uint256 targetTimestamp)
         internal
         view
