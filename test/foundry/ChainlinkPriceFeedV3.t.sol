@@ -332,9 +332,8 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
         // make sure that even if there's no cache observation, CumulativeTwap won't calculate a TWAP
         vm.warp(_timestamp + 1);
 
-        // FIXME: imprecise calculation
-        // (995 * 1800 + 1000 * 1) / 1801 = 995.00277623
-        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 995.00277623 * 1e8);
+        // (995 * 1799 + 1000 * 1) / 1800 = 995.00277777
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 995.00277777 * 1e8);
     }
 
     function test_getCachedTwap_with_valid_price_after_a_second() public {
