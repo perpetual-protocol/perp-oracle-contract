@@ -169,8 +169,8 @@ contract CumulativeTwap is BlockContext {
         }
 
         // now, set before to the oldest observation
-        beforeOrAt = observations[currentObservationIndex + 1];
-        if (observations[currentObservationIndex].timestamp == 0) {
+        beforeOrAt = observations[(currentObservationIndex + 1) % MAX_OBSERVATION];
+        if (beforeOrAt.timestamp == 0) {
             beforeOrAt = observations[0];
         }
 
