@@ -201,7 +201,7 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
         it("verify status", async () => {
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(1798)
 
-            // observations[1800] shouldn't be updated since we only run 1800 times in for loop
+            // observations[1799] shouldn't be updated since we only run 1799 times in for loop
             const observation1799 = await bandPriceFeed.observations(1799)
             expect(observation1799.price).to.eq(0)
             expect(observation1799.priceCumulative).to.eq(0)

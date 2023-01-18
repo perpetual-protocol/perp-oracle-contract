@@ -25,7 +25,7 @@ contract CumulativeTwap is BlockContext {
     uint16 internal constant MAX_OBSERVATION = 1800;
     // let's use 15 mins and 1 hr twap as example
     // if the price is updated every 2 secs, 1hr twap Observation should have 60 / 2 * 60 = 1800 slots
-    Observation[MAX_OBSERVATION + 1] public observations;
+    Observation[MAX_OBSERVATION] public observations;
 
     //
     // INTERNAL
