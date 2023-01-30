@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -228,13 +227,13 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return (maxDeviatedPrice, _blockTimestamp());
     }
 
-    function _isNotFreezed(FreezedReason freezedReason) internal view returns (bool) {
-        return freezedReason == FreezedReason.NotFreezed;
-    }
-
     function _isAnswerIsOutlierAndOverOutlierCoolDownPeriod(FreezedReason freezedReason) internal view returns (bool) {
         return
             freezedReason == FreezedReason.AnswerIsOutlier &&
             _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod);
+    }
+
+    function _isNotFreezed(FreezedReason freezedReason) internal pure returns (bool) {
+        return freezedReason == FreezedReason.NotFreezed;
     }
 }
