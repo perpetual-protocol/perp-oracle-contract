@@ -82,7 +82,13 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     }
 
     function isTimedOut() external view override returns (bool) {
-        return _lastValidTimestamp > 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+        (, uint256 lastestValidTimestamp) = _getCachePrice();
+
+        if (lastestValidTimestamp == _lastValidTimestamp) {
+            return _lastValidTimestamp > 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+        }
+
+        return false;
     }
 
     function getFreezedReason() external view override returns (FreezedReason) {
