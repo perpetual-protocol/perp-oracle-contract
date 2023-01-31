@@ -18,7 +18,7 @@ contract UniswapV3PriceFeed is IUniswapV3PriceFeed, BlockContext {
 
     uint32 internal constant _TWAP_INTERVAL = 30 * 60;
 
-    address public pool;
+    address public immutable pool;
 
     //
     // EXTERNAL
