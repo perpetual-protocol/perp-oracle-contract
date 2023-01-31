@@ -21,7 +21,6 @@ export async function flatten(
 
     mkdir("-p", toDir)
     const flattened = await asyncExec(`truffle-flattener ${fromFile}`)
-    // console.log(flattened)
 
     const trimmed = flattened.split("\n").filter(line => {
         if (line.indexOf("SPDX-License-Identifier") !== -1) {
