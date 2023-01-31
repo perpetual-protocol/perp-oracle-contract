@@ -476,6 +476,30 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, 93875 * 1e6);
     }
 
+    function test_cacheTwap_freezedReason_is_AnswerIsOutlier_update_too_frequently() public {
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval); // price: 1000
+
+        int256 price1 = 910 * 1e8; // price: 1000 * (1-(_maxOutlierDeviationRatio-1%)) = 910
+        uint256 timestamp1 = _timestamp + 1;
+        _mock_call_latestRoundData(_roundId + 1, price1, timestamp1);
+        vm.warp(timestamp1);
+
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        emit ChainlinkPriceUpdated(uint256(price1), timestamp1, FreezedReason.NotFreezed);
+        _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
+
+        int256 price2 = 828.1 * 1e8; // price: 910 * (1-(_maxOutlierDeviationRatio-1%)) = 828.1
+        uint256 timestamp2 = _timestamp + 2;
+        _mock_call_latestRoundData(_roundId + 2, price2, timestamp2);
+        vm.warp(timestamp2);
+
+        _expect_emit_event_from_ChainlinkPriceFeedV3();
+        emit ChainlinkPriceUpdated(uint256(price1), timestamp1, FreezedReason.AnswerIsOutlier);
+        _expect_revert_cacheTwap_CT_IT(_twapInterval);
+        // (1000*1+910*1)/2=955
+        assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 955 * 1e8);
+    }
+
     function test_revert_cacheTwap_freezedReason_is_AnswerIsOutlier_but_before__outlierCoolDownPeriod() public {
         _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
 

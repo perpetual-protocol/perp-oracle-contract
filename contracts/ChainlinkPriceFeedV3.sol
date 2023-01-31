@@ -19,12 +19,15 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     //
 
     uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
+    uint24 private constant _outlierPriceSamplePeriod = 5; // 5s
     uint8 internal immutable _decimals;
     uint24 internal immutable _maxOutlierDeviationRatio;
     uint256 internal immutable _outlierCoolDownPeriod;
     uint256 internal immutable _timeout;
     uint256 internal _lastValidPrice;
     uint256 internal _lastValidTimestamp;
+    uint256 internal _lastNsValidTimestamp;
+    uint256 internal _lastNsValidPrice;
     AggregatorV3Interface internal immutable _aggregator;
 
     //
@@ -123,12 +126,21 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         if (_isNotFreezed(freezedReason)) {
             _lastValidPrice = uint256(response.answer);
             _lastValidTimestamp = response.updatedAt;
+            _recordLastNsPrice(_lastValidPrice, _lastValidTimestamp);
         }
         if (_isAnswerIsOutlierAndOverOutlierCoolDownPeriod(freezedReason)) {
             (_lastValidPrice, _lastValidTimestamp) = _getPriceAndTimestampAfterOutlierCoolDown(response.answer);
+            _recordLastNsPrice(_lastValidPrice, _lastValidTimestamp);
         }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
+    }
+
+    function _recordLastNsPrice(uint256 price, uint256 time) internal {
+        if (_blockTimestamp().sub(_outlierPriceSamplePeriod) > _lastNsValidTimestamp) {
+            _lastNsValidPrice = price;
+            _lastNsValidTimestamp = time;
+        }
     }
 
     function _getCachePrice() internal view returns (uint256, uint256) {
@@ -208,8 +220,8 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     }
 
     function _isOutlier(uint256 price) internal view returns (bool) {
-        uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
-        uint256 deviationRatio = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastValidPrice);
+        uint256 diff = _lastNsValidPrice >= price ? _lastNsValidPrice - price : price - _lastNsValidPrice;
+        uint256 deviationRatio = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastNsValidPrice);
         return deviationRatio >= _maxOutlierDeviationRatio;
     }
 
@@ -219,10 +231,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     ///      output: 300 -> 300 (wait for _outlierCoolDownPeriod) -> 330 (assuming _maxOutlierDeviationRatio = 10%)
     function _getPriceAndTimestampAfterOutlierCoolDown(int256 answer) internal view returns (uint256, uint256) {
         uint24 deviationRatio =
-            uint256(answer) > _lastValidPrice
+            uint256(answer) > _lastNsValidPrice
                 ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
                 : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
-        uint256 maxDeviatedPrice = _lastValidPrice.mul(deviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
+        uint256 maxDeviatedPrice = _lastNsValidPrice.mul(deviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
 
         return (maxDeviatedPrice, _blockTimestamp());
     }
