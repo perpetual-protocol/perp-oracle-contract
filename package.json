@@ -39,7 +39,9 @@
     "lint": "npm run lint-contracts && npm run lint-tests",
     "lint-contracts": "solhint 'contracts/**/*.sol'",
     "lint-tests": "if grep -qr 'test' -e '.only('; then echo 'found .only() in tests'; exit 1; else echo 'not found .only() in tests'; fi",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "flatten": "ts-node --files scripts/flatten.ts",
+    "slither": "ts-node --files scripts/slither.ts"
   },
   "devDependencies": {
     "@chainlink/contracts": "0.1.7",
@@ -69,6 +71,7 @@
     "solhint": "3.3.6",
     "solhint-plugin-prettier": "0.0.5",
     "solidity-coverage": "0.7.17",
+    "truffle-flatten": "1.0.8",
     "ts-generator": "0.1.1",
     "ts-node": "10.0.0",
     "typechain": "5.2.0",
