@@ -29,6 +29,8 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
         require(chainlinkPriceFeedV3.isContract(), "PFD_CNC");
 
         _chainlinkPriceFeedV3 = ChainlinkPriceFeedV3(chainlinkPriceFeedV3);
+        _status = Status.Chainlink;
+        emit StatusUpdated(_status);
     }
 
     /// @inheritdoc IPriceFeedDispatcher
