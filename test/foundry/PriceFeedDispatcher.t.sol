@@ -42,7 +42,7 @@ contract PriceFeedDispatcherSetup is Test {
         TestAggregatorV3 aggregator = new TestAggregatorV3();
         vm.mockCall(address(aggregator), abi.encodeWithSelector(aggregator.decimals.selector), abi.encode(8));
 
-        return new ChainlinkPriceFeedV3(aggregator, 1, 1, 1, 1);
+        return new ChainlinkPriceFeedV3(aggregator, 1, 1);
     }
 
     function _create_PriceFeedDispatcher() internal returns (PriceFeedDispatcherMocked) {
