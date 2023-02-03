@@ -155,10 +155,10 @@ contract CumulativeTwap is BlockContext {
         // CT_NEH: no enough historical data
         require(beforeOrAt.timestamp <= targetTimestamp, "CT_NEH");
 
-        return binarySearch(targetTimestamp);
+        return _binarySearch(targetTimestamp);
     }
 
-    function binarySearch(uint256 targetTimestamp)
+    function _binarySearch(uint256 targetTimestamp)
         private
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
