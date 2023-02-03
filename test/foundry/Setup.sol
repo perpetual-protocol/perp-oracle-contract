@@ -27,8 +27,6 @@ contract AggregatorV3Broken is TestAggregatorV3 {
 
 contract Setup is Test {
     uint256 internal _timeout = 40 * 60; // 40 mins
-    uint24 internal _maxOutlierDeviationRatio = 1e5; // 10%
-    uint256 internal _outlierCoolDownPeriod = 10; // 10s
     uint80 internal _twapInterval = 30 * 60; // 30 mins
 
     TestAggregatorV3 internal _testAggregator;
@@ -55,14 +53,7 @@ contract Setup is Test {
     }
 
     function _create_ChainlinkPriceFeedV3(TestAggregatorV3 aggregator) internal returns (ChainlinkPriceFeedV3) {
-        return
-            new ChainlinkPriceFeedV3(
-                aggregator,
-                _timeout,
-                _maxOutlierDeviationRatio,
-                _outlierCoolDownPeriod,
-                _twapInterval
-            );
+        return new ChainlinkPriceFeedV3(aggregator, _timeout, _twapInterval);
     }
 
     function _create_AggregatorV3Broken() internal returns (AggregatorV3Broken) {

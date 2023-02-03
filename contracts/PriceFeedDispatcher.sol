@@ -18,7 +18,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
     Status internal _status = Status.Chainlink;
     UniswapV3PriceFeed internal _uniswapV3PriceFeed;
-    ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
+    ChainlinkPriceFeedV3 internal immutable _chainlinkPriceFeedV3;
 
     //
     // EXTERNAL NON-VIEW

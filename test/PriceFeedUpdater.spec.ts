@@ -51,8 +51,8 @@ describe("PriceFeedUpdater Spec", () => {
             "ChainlinkPriceFeedV3",
             admin,
         )
-        const ethPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 1e5, 10, 30 * 60)
-        const btcPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 1e5, 10, 30 * 60)
+        const ethPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 30 * 60)
+        const btcPriceFeed = await chainlinkPriceFeedV2Factory.deploy(aggregator.address, 40 * 60, 30 * 60)
 
         await ethPriceFeed.deployed()
         await btcPriceFeed.deployed()
