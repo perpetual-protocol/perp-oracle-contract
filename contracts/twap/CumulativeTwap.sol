@@ -108,14 +108,9 @@ contract CumulativeTwap is BlockContext {
         //                   beforeOrAt   targetTimestamp   atOrAfter
         //      ------------------+-------------+---------------+----------------->
 
-        // original imprecisive one
-        //
-        //                   beforeOrAt                    atOrAfter
-        //      ------------------+-------------+---------------+------------------
-        //                <-------|             |               |
-        // case 1       targetTimestamp         |               |------->
-        // case 2                               |              targetTimestamp
-        // case 3                          targetTimestamp
+        //                                  atOrAfter
+        //                   beforeOrAt   targetTimestamp
+        //      ------------------+-------------+---------------+----------------->
 
         (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 targetCumulativePrice;
@@ -130,23 +125,23 @@ contract CumulativeTwap is BlockContext {
         }
         // case3. in the middle
         else {
-            // it implies beforeOrAt = observations[currentObservationIndex]
-            // which means there's no atOrAfter
+            // atOrAfter.timestamp == 0 implies beforeOrAt = observations[currentObservationIndex]
+            // which means there's no atOrAfter from _getSurroundingObservations
+            // and atOrAfter.priceCumulative should eaual to targetCumulativePrice
             if (atOrAfter.timestamp == 0) {
-                atOrAfter.priceCumulative =
+                targetCumulativePrice =
                     beforeOrAt.priceCumulative +
                     (beforeOrAt.price * (targetTimestamp - beforeOrAt.timestamp));
-                atOrAfter.timestamp = targetTimestamp;
+            } else {
+                uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+                uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+
+                targetCumulativePrice = beforeOrAt.priceCumulative.add(
+                    ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
+                        observationTimeDelta
+                    )
+                );
             }
-
-            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-
-            targetCumulativePrice = beforeOrAt.priceCumulative.add(
-                ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
-                    observationTimeDelta
-                )
-            );
         }
 
         return currentCumulativePrice.sub(targetCumulativePrice).div(interval);
