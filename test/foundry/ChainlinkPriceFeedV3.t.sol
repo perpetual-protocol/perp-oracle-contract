@@ -94,6 +94,31 @@ contract ChainlinkPriceFeedV3GetterTest is ChainlinkPriceFeedV3Common {
         vm.warp(_timestamp + _timeout + 1);
         assertEq(_chainlinkPriceFeedV3.isTimedOut(), true);
     }
+
+    function test_isTimedOut_without_calling_update_and_with_chainlink_valid_data() public {
+        _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(0, _price);
+        vm.warp(_timestamp + _timeout);
+        assertEq(_chainlinkPriceFeedV3.isTimedOut(), false);
+        // chain link get updated with a valid data but update doesn't get called
+        _mock_call_latestRoundData(_roundId + 1, int256(_price + 1), _timestamp + _timeout);
+        // time after the _lastValidTimestamp + timeout period
+        vm.warp(_timestamp + _timeout + 1);
+        assertEq(_chainlinkPriceFeedV3.isTimedOut(), false);
+        // time after the last valid oracle price's updated time + timeout period
+        vm.warp(_timestamp + _timeout + _timeout + 1);
+        assertEq(_chainlinkPriceFeedV3.isTimedOut(), true);
+    }
+
+    function test_isTimedOut_without_calling_update_and_with_chainlink_invalid_data() public {
+        _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(0, _price);
+        vm.warp(_timestamp + _timeout);
+        assertEq(_chainlinkPriceFeedV3.isTimedOut(), false);
+        // chain link get updated with an invalid data but update doesn't get called
+        _mock_call_latestRoundData(_roundId + 1, int256(_price + 1), 0);
+        vm.warp(_timestamp + _timeout + 1);
+        // we should make sure that
+        assertEq(_chainlinkPriceFeedV3.isTimedOut(), true);
+    }
 }
 
 // this test also covers update() since it's essentially cacheTwap(0)

@@ -72,7 +72,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     }
 
     function isTimedOut() external view override returns (bool) {
-        return _lastValidTimestamp > 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+        // Fetch the latest timstamp instead of _lastValidTimestamp is to prevent stale data
+        // when the update() doesn't get triggered.
+        (, uint256 lastestValidTimestamp) = _getCachePrice();
+        return lastestValidTimestamp > 0 && lastestValidTimestamp.add(_timeout) < _blockTimestamp();
     }
 
     function getFreezedReason() external view override returns (FreezedReason) {
