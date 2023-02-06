@@ -45,7 +45,18 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
     ///      with the same timestamp will get reverted in CumulativeTwap._update()
     function update() external override {
-        cacheTwap(0);
+        _cachePrice();
+
+        (bool isUpdated, ) = _cacheTwap(0, _lastValidPrice, _lastValidTimestamp);
+        // CPF_NU: not updated
+        require(isUpdated, "CPF_NU");
+    }
+
+    /// @inheritdoc IChainlinkPriceFeedV3
+    function cacheTwap(uint256 interval) external override {
+        _cachePrice();
+
+        _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
     }
 
     //
@@ -89,17 +100,6 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
 
     function decimals() external view override returns (uint8) {
         return _decimals;
-    }
-
-    //
-    // PUBLIC
-    //
-
-    /// @inheritdoc IChainlinkPriceFeedV3
-    function cacheTwap(uint256 interval) public override {
-        _cachePrice();
-
-        _cacheTwap(interval, _lastValidPrice, _lastValidTimestamp);
     }
 
     //

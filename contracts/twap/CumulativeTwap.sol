@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 import { BlockContext } from "../base/BlockContext.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -31,20 +30,22 @@ contract CumulativeTwap is BlockContext {
     // INTERNAL
     //
 
-    function _update(uint256 price, uint256 lastUpdatedTimestamp) internal {
+    function _update(uint256 price, uint256 lastUpdatedTimestamp) internal returns (bool) {
         // for the first time updating
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
             observations[0] = Observation({ price: price, priceCumulative: 0, timestamp: lastUpdatedTimestamp });
-            return;
+            return true;
         }
 
         Observation memory lastObservation = observations[currentObservationIndex];
-        // CT_IT: invalid timestamp
-        require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
+        // No need to update, if the latest timestamp is less than last oberservation
+        if (lastUpdatedTimestamp <= lastObservation.timestamp) {
+            return false;
+        }
 
         // if the price remains still, there's no need for update
         if (price == lastObservation.price) {
-            return;
+            return false;
         }
 
         // overflow of currentObservationIndex is expected since currentObservationIndex is uint8 (0 - 255),
@@ -57,6 +58,7 @@ contract CumulativeTwap is BlockContext {
             timestamp: lastUpdatedTimestamp,
             price: price
         });
+        return true;
     }
 
     function _calculateTwap(
