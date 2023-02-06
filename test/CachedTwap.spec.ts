@@ -147,9 +147,15 @@ describe("Cached Twap Spec", () => {
             expect(price2).to.not.eq(price1)
         })
 
-        it("force error, CT_IT if timestamp doesn't change", async () => {
-            await testPriceFeed.getPrice(45)
-            await expect(testPriceFeed.callStatic.getPrice(45)).to.be.revertedWith("CT_IT")
+        it("re-calculate twap if timestamp doesn't change", async () => {
+            const price1 = await testPriceFeed.getPrice(45)
+
+            // forword block timestamp 15sec
+            currentTime += 15
+            await setNextBlockTimestamp(currentTime)
+
+            const price2 = await testPriceFeed.getPrice(45)
+            expect(price2).to.not.eq(price1)
         })
     })
 })

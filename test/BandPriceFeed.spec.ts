@@ -96,7 +96,7 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IT")
+            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_NU")
         })
     })
 
