@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Setup.sol";
 import "../../contracts/interface/IChainlinkPriceFeedV3.sol";
 import "../../contracts/test/TestAggregatorV3.sol";
+import { CumulativeTwap } from "../../contracts/twap/CumulativeTwap.sol";
 
 contract ChainlinkPriceFeedV3ConstructorTest is Setup {
     function test_CPF_ANC() public {
@@ -144,15 +145,35 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsZeroTest is ChainlinkPriceFeedV3
         assertEq(_chainlinkPriceFeedV3.getCachedTwap(0), latestPrice);
     }
 
-    function test_revert_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
+    function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
         _chainlinkPriceFeedV3.cacheTwap(0);
 
-        // giving a different price but the same old timestamp
-        _mock_call_latestRoundData(_roundId, 2000 * 1e8, _timestamp);
-        vm.warp(_timestamp + 1);
+        uint256 t2 = _timestamp + 60;
 
-        // price won't get cached and tx will revert
-        _expect_revert_cacheTwap_CT_IT(0);
+        _mock_call_latestRoundData(_roundId, 2000 * 1e8, t2);
+        vm.warp(t2);
+        _chainlinkPriceFeedV3.cacheTwap(0);
+
+        uint256 currentObservationIndexBefore = _chainlinkPriceFeedV3.currentObservationIndex();
+        (uint256 priceBefore, , ) = _chainlinkPriceFeedV3.observations(currentObservationIndexBefore);
+        uint256 twapBefore = _chainlinkPriceFeedV3.getCachedTwap(_twapInterval);
+
+        // giving a different price but the same old timestamp
+        _mock_call_latestRoundData(_roundId, 2500 * 1e8, t2);
+        vm.warp(t2 + 1);
+
+        _chainlinkPriceFeedV3.cacheTwap(0);
+
+        uint256 currentObservationIndexAfter = _chainlinkPriceFeedV3.currentObservationIndex();
+        (uint256 priceAfter, , ) = _chainlinkPriceFeedV3.observations(currentObservationIndexAfter);
+        uint256 twapAfter = _chainlinkPriceFeedV3.getCachedTwap(_twapInterval);
+
+        // latest price will not update
+        assertEq(currentObservationIndexAfter, currentObservationIndexBefore);
+        assertEq(priceAfter, priceBefore);
+
+        // twap will be re-caulculated
+        assertEq(twapAfter != twapBefore, true);
     }
 
     function test_cacheTwap_freezedReason_is_NoResponse() public {
@@ -213,7 +234,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsZeroTest is ChainlinkPriceFeedV3
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp - 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.InvalidTimestamp);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
 
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }
@@ -274,15 +295,35 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
         assertEq(_chainlinkPriceFeedV3.getCachedTwap(_twapInterval), 1000.5 * 1e8);
     }
 
-    function test_revert_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
+    function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
         _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
 
-        // giving a different price but the same old timestamp
-        _mock_call_latestRoundData(_roundId, 2000 * 1e8, _timestamp);
-        vm.warp(_timestamp + 1);
+        uint256 t2 = _timestamp + 60;
 
-        // price won't get cached and tx will revert
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
+        _mock_call_latestRoundData(_roundId, 2000 * 1e8, t2);
+        vm.warp(t2);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+
+        uint256 currentObservationIndexBefore = _chainlinkPriceFeedV3.currentObservationIndex();
+        (uint256 priceBefore, , ) = _chainlinkPriceFeedV3.observations(currentObservationIndexBefore);
+        uint256 twapBefore = _chainlinkPriceFeedV3.getCachedTwap(_twapInterval);
+
+        // giving a different price but the same old timestamp
+        _mock_call_latestRoundData(_roundId, 2500 * 1e8, t2);
+        vm.warp(t2 + 1);
+
+        // will update _cachedTwap
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+
+        uint256 currentObservationIndexAfter = _chainlinkPriceFeedV3.currentObservationIndex();
+        (uint256 priceAfter, , ) = _chainlinkPriceFeedV3.observations(currentObservationIndexAfter);
+        uint256 twapAfter = _chainlinkPriceFeedV3.getCachedTwap(_twapInterval);
+
+        // latest price will not update
+        assertEq(currentObservationIndexAfter, currentObservationIndexBefore);
+        assertEq(priceAfter, priceBefore);
+
+        assertEq(twapAfter != twapBefore, true);
     }
 
     function test_cacheTwap_freezedReason_is_NoResponse() public {
@@ -340,7 +381,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
         _mock_call_latestRoundData(_roundId, int256(_price), _timestamp - 1);
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_price, _timestamp, FreezedReason.InvalidTimestamp);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
 
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }

@@ -38,8 +38,12 @@ contract CumulativeTwap is BlockContext {
         }
 
         Observation memory lastObservation = observations[currentObservationIndex];
-        // No need to update, if the latest timestamp is less than last oberservation
-        if (lastUpdatedTimestamp <= lastObservation.timestamp) {
+
+        // CT_IT: invalid timestamp
+        require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
+
+        // No need to update, if the latest timestamp is equal to last oberservation
+        if (lastUpdatedTimestamp == lastObservation.timestamp) {
             return false;
         }
 
