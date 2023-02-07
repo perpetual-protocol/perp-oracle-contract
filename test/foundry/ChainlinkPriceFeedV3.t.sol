@@ -45,11 +45,6 @@ contract ChainlinkPriceFeedV3Common is IChainlinkPriceFeedV3Event, Setup {
         assertEq(_chainlinkPriceFeedV3Broken.getCachedTwap(interval), price);
     }
 
-    function _expect_revert_cacheTwap_CT_IT(uint256 interval) internal {
-        vm.expectRevert(bytes("CT_IT"));
-        _chainlinkPriceFeedV3.cacheTwap(interval);
-    }
-
     function _mock_call_latestRoundData(
         uint256 roundId,
         int256 answer,
