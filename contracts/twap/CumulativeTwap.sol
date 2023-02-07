@@ -77,6 +77,13 @@ contract CumulativeTwap is BlockContext {
 
         Observation memory latestObservation = observations[currentObservationIndex];
 
+        // Use latestObservation instead, if the latest updated timestamp is equal to latestObservation's timestamp
+        // it's to be consistent with the logic of _update
+        if (latestObservation.timestamp == latestUpdatedTimestamp) {
+            price = latestObservation.price;
+            latestUpdatedTimestamp = latestObservation.timestamp;
+        }
+
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp.sub(interval);
         uint256 currentCumulativePrice =
@@ -121,7 +128,6 @@ contract CumulativeTwap is BlockContext {
         // 1. if observation has no data / only one data, _calculateTwap returns 0 (above case 1)
         // 2. if not enough data, _calculateTwap returns timestampDiff twap price (above case 1)
         // 3. if exceed the observations' length, _getSurroundingObservations will get reverted
-
         uint256 timestampDiff = currentTimestamp - targetTimestamp;
         return timestampDiff == 0 ? 0 : currentCumulativePrice.sub(targetCumulativePrice).div(timestampDiff);
     }
