@@ -42,9 +42,10 @@ contract CumulativeTwap is BlockContext {
         // CT_IT: invalid timestamp
         require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
 
-        // No need to update, if the latest timestamp is equal to last oberservation
+        // DO NOT accept same timestamp and different price
+        // CT_IPWU: invalid price when update
         if (lastUpdatedTimestamp == lastObservation.timestamp) {
-            return false;
+            require(price == lastObservation.price, "CT_IPWU");
         }
 
         // if the price remains still, there's no need for update
@@ -77,11 +78,11 @@ contract CumulativeTwap is BlockContext {
 
         Observation memory latestObservation = observations[currentObservationIndex];
 
-        // Use latestObservation instead, if the latest updated timestamp is equal to latestObservation's timestamp
+        // DO NOT accept same timestamp and different price
+        // CT_IPWCT: invalid price when calculating twap
         // it's to be consistent with the logic of _update
         if (latestObservation.timestamp == latestUpdatedTimestamp) {
-            price = latestObservation.price;
-            latestUpdatedTimestamp = latestObservation.timestamp;
+            require(price == latestObservation.price, "CT_IPWCT");
         }
 
         uint256 currentTimestamp = _blockTimestamp();

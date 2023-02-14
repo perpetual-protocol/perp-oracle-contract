@@ -90,9 +90,7 @@ contract CachedTwapTest is Test {
         assertEq(cachedTwap, p2);
     }
 
-    function test_cacheTwap_wont_update_latestPrice_but_update_cachedTwap_when_same_timestamp_and_different_price()
-        public
-    {
+    function test_revert_cacheTwap_when_same_timestamp_and_different_price() public {
         //           t1      t2
         //      -----+--------+------
         //              1200s
@@ -118,8 +116,7 @@ contract CachedTwapTest is Test {
         uint256 p3 = 140 * 1e8;
         vm.warp(t2 + 1200);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p3, t2);
-        assertEq(isUpdated, false);
-        assertEq(cachedTwap, p2);
+        vm.expectRevert(bytes("CT_IPWU"));
+        _testCachedTwap.cacheTwap(_INTERVAL, p3, t2);
     }
 }
