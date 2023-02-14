@@ -89,14 +89,24 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             expect(observation.priceCumulative).to.eq(parseEther("6000"))
         })
 
-        it("force error, the second update is the same timestamp", async () => {
+        it("force error, the second update is the same price and timestamp", async () => {
+            await updatePrice(400, false)
+
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_NU")
+        })
+
+        it("force error, the second update is the same timestamp but different price", async () => {
             await updatePrice(400, false)
 
             roundData.push([parseEther("440"), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_NU")
+            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IPWU")
         })
     })
 

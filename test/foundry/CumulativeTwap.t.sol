@@ -59,6 +59,29 @@ contract CumulativeTwapTest is Test {
         assertEq(timestampBefore, timestampAfter);
     }
 
+    function test_update_when_timestamp_and_price_is_the_same_as_last_opservation() public {
+        uint256 t1 = _INIT_BLOCK_TIMESTAMP;
+        uint256 p1 = 100 * 1e8;
+
+        // first update
+        assertEq(_testCumulativeTwap.update(p1, t1), true);
+
+        uint256 latestObservationIndex = _testCumulativeTwap.currentObservationIndex();
+        (uint256 priceBefore, uint256 priceCumulativeBefore, uint256 timestampBefore) = _testCumulativeTwap
+            .observations(latestObservationIndex);
+
+        // second update won't update
+        assertEq(_testCumulativeTwap.update(p1, t1), false);
+        assertEq(_testCumulativeTwap.currentObservationIndex(), latestObservationIndex);
+
+        (uint256 priceAfter, uint256 priceCumulativeAfter, uint256 timestampAfter) = _testCumulativeTwap.observations(
+            latestObservationIndex
+        );
+        assertEq(priceBefore, priceAfter);
+        assertEq(priceCumulativeBefore, priceCumulativeAfter);
+        assertEq(timestampBefore, timestampAfter);
+    }
+
     function test_calculateTwap_when_valid_timestamp_and_price() public {
         uint256 interval = 30;
         uint256 t1 = _INIT_BLOCK_TIMESTAMP;
