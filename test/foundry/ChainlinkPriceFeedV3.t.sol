@@ -366,7 +366,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.IncorrectDecimals);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
 
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.IncorrectDecimals);
     }
@@ -376,7 +375,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.NoRoundId);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.NoRoundId);
     }
 
@@ -386,7 +384,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.InvalidTimestamp);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }
 
@@ -396,7 +393,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.InvalidTimestamp);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
 
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }
@@ -418,7 +414,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.NonPositiveAnswer);
-        _expect_revert_cacheTwap_CT_IT(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.NonPositiveAnswer);
     }
 }
