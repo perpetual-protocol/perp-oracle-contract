@@ -141,7 +141,8 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             })
 
             it("asking interval more than bandReference has", async () => {
-                await expect(bandPriceFeed.getPrice(46)).to.be.revertedWith("CT_NEH")
+                const price = await bandPriceFeed.getPrice(46) // should directly return latest price
+                await expect(price).to.eq(parseEther("410"))
             })
 
             it("asking interval less than bandReference has", async () => {
@@ -258,7 +259,7 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             expect(price).to.eq("1300033350626250648484")
         })
 
-        it("force error, asking interval more than observation has", async () => {
+        it("get the latest price, if asking interval more than observation has", async () => {
             // update 2 more times to rotate currentObservationIndex to 0
             await updatePrice(beginPrice + 1799)
 
@@ -269,7 +270,9 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
 
             // the longest interval = 1799 * 15 = 26985, it should be revert when interval >= 26986
             // here, we set interval to 26987 because hardhat increases the timestamp by 1 when any tx happens
-            await expect(bandPriceFeed.getPrice(1799 * 15 + 2)).to.be.revertedWith("CT_NEH")
+            const price = await bandPriceFeed.getPrice(1799 * 15 + 2)
+            const priceWith0Interval = await bandPriceFeed.getPrice(0)
+            await expect(price).to.eq(priceWith0Interval)
         })
     })
 
