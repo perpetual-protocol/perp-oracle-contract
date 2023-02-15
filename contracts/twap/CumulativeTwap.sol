@@ -123,6 +123,10 @@ contract CumulativeTwap is BlockContext {
         else if (atOrAfter.timestamp == targetTimestamp) {
             targetCumulativePrice = atOrAfter.priceCumulative;
         }
+        // not enough historical data
+        else if (beforeOrAt.timestamp == atOrAfter.timestamp) {
+            return 0;
+        }
         // case3. in the middle
         else {
             // atOrAfter.timestamp == 0 implies beforeOrAt = observations[currentObservationIndex]
@@ -159,6 +163,7 @@ contract CumulativeTwap is BlockContext {
             // if the observation is the same as the targetTimestamp
             // atOrAfter doesn't matter
             // if the observation is less than the targetTimestamp
+            // simply return empty atOrAfter
             // atOrAfter repesents latest price and timestamp
             return (beforeOrAt, atOrAfter);
         }
@@ -170,8 +175,10 @@ contract CumulativeTwap is BlockContext {
         }
 
         // ensure that the target is chronologically at or after the oldest observation
-        // CT_NEH: no enough historical data
-        require(beforeOrAt.timestamp <= targetTimestamp, "CT_NEH");
+        // if no enough historical data, simply return two beforeOrAt and return 0 at _calculateTwap
+        if (beforeOrAt.timestamp > targetTimestamp) {
+            return (beforeOrAt, beforeOrAt);
+        }
 
         return _binarySearch(targetTimestamp);
     }
