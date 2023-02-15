@@ -15,17 +15,60 @@ contract TestCumulativeTwap is CumulativeTwap {
     ) external returns (uint256 twap) {
         return _calculateTwap(interval, price, latestUpdatedTimestamp);
     }
+
+    function getObservationLength() external returns (uint256) {
+        return MAX_OBSERVATION;
+    }
 }
 
-contract CumulativeTwapTest is Test {
-    uint256 internal constant _INIT_BLOCK_TIMESTAMP = 1000;
-
+contract CumulativeTwapSetup is Test {
     TestCumulativeTwap internal _testCumulativeTwap;
 
-    function setUp() public {
+    struct Observation {
+        uint256 price;
+        uint256 priceCumulative;
+        uint256 timestamp;
+    }
+
+    function _updatePrice(uint256 price, bool forward) internal {
+        _testCumulativeTwap.update(price, block.timestamp);
+
+        if (forward) {
+            vm.warp(block.timestamp + 15);
+            vm.roll(block.number + 1);
+        }
+    }
+
+    function _isObservationEqualTo(
+        uint256 index,
+        uint256 expectedPrice,
+        uint256 expectedPriceCumulative,
+        uint256 expectedTimestamp
+    ) internal {
+        (uint256 _price, uint256 _priceCumulative, uint256 _timestamp) = _testCumulativeTwap.observations(index);
+        assertEq(_price, expectedPrice);
+        assertEq(_priceCumulative, expectedPriceCumulative);
+        assertEq(_timestamp, expectedTimestamp);
+    }
+
+    function _getTwap(uint256 interval) internal returns (uint256) {
+        uint256 currentIndex = _testCumulativeTwap.currentObservationIndex();
+        (uint256 price, uint256 _, uint256 time) = _testCumulativeTwap.observations(currentIndex);
+        return _testCumulativeTwap.calculateTwap(interval, price, time);
+    }
+
+    function setUp() public virtual {
+        _testCumulativeTwap = new TestCumulativeTwap();
+    }
+}
+
+contract CumulativeTwapTest is CumulativeTwapSetup {
+    uint256 internal constant _INIT_BLOCK_TIMESTAMP = 1000;
+
+    function setUp() public virtual override {
         vm.warp(_INIT_BLOCK_TIMESTAMP);
 
-        _testCumulativeTwap = new TestCumulativeTwap();
+        CumulativeTwapSetup.setUp();
     }
 
     function test_revert_update_when_timestamp_is_less_than_last_observation() public {
@@ -67,16 +110,15 @@ contract CumulativeTwapTest is Test {
         assertEq(_testCumulativeTwap.update(p1, t1), true);
 
         uint256 latestObservationIndex = _testCumulativeTwap.currentObservationIndex();
-        (uint256 priceBefore, uint256 priceCumulativeBefore, uint256 timestampBefore) = _testCumulativeTwap
-            .observations(latestObservationIndex);
+        (uint256 priceBefore, uint256 priceCumulativeBefore, uint256 timestampBefore) =
+            _testCumulativeTwap.observations(latestObservationIndex);
 
         // second update won't update
         assertEq(_testCumulativeTwap.update(p1, t1), false);
         assertEq(_testCumulativeTwap.currentObservationIndex(), latestObservationIndex);
 
-        (uint256 priceAfter, uint256 priceCumulativeAfter, uint256 timestampAfter) = _testCumulativeTwap.observations(
-            latestObservationIndex
-        );
+        (uint256 priceAfter, uint256 priceCumulativeAfter, uint256 timestampAfter) =
+            _testCumulativeTwap.observations(latestObservationIndex);
         assertEq(priceBefore, priceAfter);
         assertEq(priceCumulativeBefore, priceCumulativeAfter);
         assertEq(timestampBefore, timestampAfter);
@@ -104,5 +146,98 @@ contract CumulativeTwapTest is Test {
         vm.warp(t2);
         vm.expectRevert(bytes("CT_IPWCT"));
         _testCumulativeTwap.calculateTwap(interval, p2, t1);
+    }
+}
+
+contract CumulativeTwapCalculateTwapBase is CumulativeTwapSetup {
+    uint256 internal constant _BEGIN_PRICE = 400;
+    uint256 internal _BEGIN_TIME = block.timestamp;
+    uint256 internal observationLength;
+
+    function setUp() public virtual override {
+        vm.warp(_BEGIN_TIME);
+
+        CumulativeTwapSetup.setUp();
+
+        observationLength = _testCumulativeTwap.getObservationLength();
+    }
+}
+
+contract CumulativeTwapCalculateTwapTestWithoutObservation is CumulativeTwapCalculateTwapBase {
+    function test_calculateTwap_should_return_0_when_observations_is_empty() public {
+        assertEq(_testCumulativeTwap.currentObservationIndex(), uint256(0));
+
+        assertEq(_getTwap(45), uint256(0));
+    }
+}
+
+contract CumulativeTwapRingBufferTest is CumulativeTwapCalculateTwapBase {
+    function setUp() public virtual override {
+        CumulativeTwapCalculateTwapBase.setUp();
+
+        // fill up observations[] excludes the last one
+        for (uint256 i = 0; i < observationLength - 1; i++) {
+            _updatePrice(_BEGIN_PRICE + i, true);
+        }
+    }
+
+    function test_calculateTwap_when_index_hasnt_get_rotated() public {
+        // last filled up index
+        assertEq(_testCumulativeTwap.currentObservationIndex(), observationLength - 2);
+        (uint256 pricePrev, uint256 priceCumulativePrev, uint256 _) =
+            _testCumulativeTwap.observations(observationLength - 3);
+        _isObservationEqualTo(
+            observationLength - 2,
+            2198, // _BEGIN_PRICE + observationLength - 2 = 400 + 1798
+            priceCumulativePrev + pricePrev * 15, // 1797's cumulative price + 1797 * 15
+            26971 // _BEGIN_TIME + (observationLength - 2) * 15 = 1 + 1798 * 15
+        );
+
+        // last observation hasn't been filled up yet
+        _isObservationEqualTo(observationLength - 1, 0, 0, 0);
+
+        // (2196 * 15 + 2197 * 15 + 2198 * 15) / 45 = 2197
+        assertEq(_getTwap(45), 2197);
+    }
+
+    function test_calculateTwap_when_index_has_rotated_to_0() public {
+        _updatePrice(_BEGIN_PRICE + observationLength - 1, true); // currentObservationIndex=1799, price=400+1799
+        _updatePrice(_BEGIN_PRICE + observationLength, true); // currentObservationIndex=0, price=400+1800
+
+        assertEq(_testCumulativeTwap.currentObservationIndex(), uint256(0));
+
+        // (2200 * 15 + 2199 * 15 + 2198 * 15) / 45 = 2199
+        assertEq(_getTwap(45), 2199);
+    }
+
+    function test_calculateTwap_when_index_has_rotated_to_9() public {
+        _updatePrice(_BEGIN_PRICE + observationLength - 1, true); // currentObservationIndex=1799, price=400+1799
+        for (uint256 i; i < 10; i++) {
+            _updatePrice(_BEGIN_PRICE + observationLength + i, true);
+        }
+
+        assertEq(_testCumulativeTwap.currentObservationIndex(), uint256(9));
+
+        // (2207 * 15 + 2208 * 15 + 2209 * 15) / 45 = 2208
+        assertEq(_getTwap(45), 2208);
+    }
+
+    function test_calculateTwap_when_twap_interval_is_exact_the_maximum_limitation() public {
+        _updatePrice(_BEGIN_PRICE + observationLength - 1, true); // currentObservationIndex=1799, price=400+1799
+        _updatePrice(_BEGIN_PRICE + observationLength, false); // currentObservationIndex=0, price=400+1800
+
+        assertEq(_testCumulativeTwap.currentObservationIndex(), uint256(0));
+
+        // (((401 + 2199) / 2) * (26986-1) + 2200 * 1) / 26986 = 1300.0333506263
+        assertEq(_getTwap(1799 * 15), 1300);
+    }
+
+    function test_calculateTwap_should_return_0_when_twap_interval_exceeds_maximum_limitation() public {
+        _updatePrice(_BEGIN_PRICE + observationLength - 1, true); // currentObservationIndex=1799, price=400+1799
+        _updatePrice(_BEGIN_PRICE + observationLength, false); // currentObservationIndex=0, price=400+1800
+
+        assertEq(_testCumulativeTwap.currentObservationIndex(), uint256(0));
+
+        assertEq(_getTwap(1799 * 15 + 1), uint256(0));
     }
 }
