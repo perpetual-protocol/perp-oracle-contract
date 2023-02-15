@@ -171,6 +171,56 @@ contract CumulativeTwapCalculateTwapTestWithoutObservation is CumulativeTwapCalc
     }
 }
 
+contract CumulativeTwapCalculateTwapTest is CumulativeTwapCalculateTwapBase {
+    function setUp() public virtual override {
+        CumulativeTwapCalculateTwapBase.setUp();
+
+        // timestamp(_BEGIN_TIME + 0)  : 400
+        // timestamp(_BEGIN_TIME + 15) : 405
+        // timestamp(_BEGIN_TIME + 30) : 410
+        // now = _BEGIN_TIME + 45
+
+        _updatePrice(400, true);
+        _updatePrice(405, true);
+        _updatePrice(410, true);
+    }
+
+    function test_calculateTwap_when_interval_is_0() public {
+        assertEq(_getTwap(0), 0);
+    }
+
+    function test_calculateTwap_when_given_a_valid_interval() public {
+        // (410*15+405*15+400*5)/35=406.4
+        assertEq(_getTwap(35), 406); // case 3: in the mid
+        // (410*15+405*15)/30=407.5
+        assertEq(_getTwap(30), 407); // case 1: left bound
+
+        _updatePrice(415, false);
+        // (410*15+405*15)/30=407.5
+        assertEq(_getTwap(30), 407); // case 2: right bound
+    }
+
+    function test_calculateTwap_when_given_a_valid_interval_and_hasnt_beenn_updated_for_a_while() public {
+        uint256 t = block.timestamp + 10;
+        vm.warp(t);
+        vm.roll(block.number + 1);
+        // (410*25+405*5)/30=409.1
+        assertEq(_testCumulativeTwap.calculateTwap(30, 415, t), 409);
+
+        // (415*5+410*20)/25=411
+        assertEq(_testCumulativeTwap.calculateTwap(25, 415, t - 5), 411);
+    }
+
+    function test_calculateTwap_when_given_a_interval_less_than_latest_observation() public {
+        // (410*14)/14=410
+        assertEq(_getTwap(14), 410);
+    }
+
+    function test_calculateTwap_when_given_interval_exceeds_observations() public {
+        assertEq(_getTwap(46), 0);
+    }
+}
+
 contract CumulativeTwapRingBufferTest is CumulativeTwapCalculateTwapBase {
     function setUp() public virtual override {
         CumulativeTwapCalculateTwapBase.setUp();
