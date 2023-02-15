@@ -157,6 +157,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsZeroTest is ChainlinkPriceFeedV3
     }
 
     function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
+        _chainlinkPriceFeedV3_prefill_observation_to_make_twap_calculatable();
         _chainlinkPriceFeedV3.cacheTwap(0);
 
         uint256 t2 = _timestamp + 60;
@@ -321,8 +322,6 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
     }
 
     function test_cacheTwap_wont_update_when_the_new_timestamp_is_the_same() public {
-        _chainlinkPriceFeedV3_cacheTwap_and_assert_eq(_twapInterval, _price);
-
         uint256 t2 = _timestamp + 60;
 
         _mock_call_latestRoundData(_roundId, 2000 * 1e8, t2);
@@ -366,7 +365,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.IncorrectDecimals);
-
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.IncorrectDecimals);
     }
 
@@ -375,6 +374,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.NoRoundId);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.NoRoundId);
     }
 
@@ -384,6 +384,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.InvalidTimestamp);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }
 
@@ -393,7 +394,7 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.InvalidTimestamp);
-
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.InvalidTimestamp);
     }
 
@@ -414,6 +415,8 @@ contract ChainlinkPriceFeedV3CacheTwapIntervalIsNotZeroTest is ChainlinkPriceFee
 
         _expect_emit_event_from_ChainlinkPriceFeedV3();
         emit ChainlinkPriceUpdated(_prefilledPrice, _prefilledTimestamp, FreezedReason.NonPositiveAnswer);
+        _chainlinkPriceFeedV3.cacheTwap(_twapInterval);
+
         _getFreezedReason_and_assert_eq(_chainlinkPriceFeedV3, FreezedReason.NonPositiveAnswer);
     }
 }
