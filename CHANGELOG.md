@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `PriceFeedDispatcher.sol`, a proxy layer to fetch Chainlink or Uniswap's price.
 - Add `UniswapV3PriceFeed.sol` to fetch a market TWAP with a hard coded time period.
 - Update `CachedTwap.sol` and `CumulativeTwap.sol` to better support above fallbackable oracle
+## [0.5.1] - 2023-02-07
+
+- Add `ChainlinkPriceFeedV1R1`
 
 ## [0.5.0] - 2022-08-23
 
