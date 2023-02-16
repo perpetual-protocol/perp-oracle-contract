@@ -62,13 +62,48 @@ contract CumulativeTwapSetup is Test {
     }
 }
 
-contract CumulativeTwapTest is CumulativeTwapSetup {
+contract CumulativeTwapUpdateTest is CumulativeTwapSetup {
     uint256 internal constant _INIT_BLOCK_TIMESTAMP = 1000;
 
     function setUp() public virtual override {
         vm.warp(_INIT_BLOCK_TIMESTAMP);
 
         CumulativeTwapSetup.setUp();
+    }
+
+    function test_update_correctly() public {
+        uint256 t1 = _INIT_BLOCK_TIMESTAMP;
+        uint256 p1 = 100 * 1e8;
+
+        bool result1 = _testCumulativeTwap.update(p1, t1);
+
+        uint256 observationIndex1 = _testCumulativeTwap.currentObservationIndex();
+
+        (uint256 price1, uint256 priceCumulative1, uint256 timestamp1) =
+            _testCumulativeTwap.observations(observationIndex1);
+
+        assertTrue(result1);
+        assertEq(observationIndex1, 0);
+        assertEq(price1, p1);
+        assertEq(priceCumulative1, 0);
+        assertEq(timestamp1, t1);
+
+        uint256 t2 = _INIT_BLOCK_TIMESTAMP + 10;
+        uint256 p2 = 110 * 1e8;
+        vm.warp(t2);
+
+        bool result2 = _testCumulativeTwap.update(p2, t2);
+
+        uint256 observationIndex2 = _testCumulativeTwap.currentObservationIndex();
+
+        (uint256 price2, uint256 priceCumulative2, uint256 timestamp2) =
+            _testCumulativeTwap.observations(observationIndex2);
+
+        assertTrue(result2);
+        assertEq(observationIndex2, 1);
+        assertEq(price2, p2);
+        assertEq(priceCumulative2, 1000 * 1e8); // 10 * 100 * 1e8
+        assertEq(timestamp2, t2);
     }
 
     function test_revert_update_when_timestamp_is_less_than_last_observation() public {
@@ -122,30 +157,6 @@ contract CumulativeTwapTest is CumulativeTwapSetup {
         assertEq(priceBefore, priceAfter);
         assertEq(priceCumulativeBefore, priceCumulativeAfter);
         assertEq(timestampBefore, timestampAfter);
-    }
-
-    function test_calculateTwap_when_valid_timestamp_and_price() public {
-        uint256 interval = 30;
-        uint256 t1 = _INIT_BLOCK_TIMESTAMP;
-        uint256 p1 = 100 * 1e8;
-        assertEq(_testCumulativeTwap.update(p1, t1), true);
-
-        uint256 t2 = t1 + interval;
-        vm.warp(t2);
-        assertEq(_testCumulativeTwap.calculateTwap(interval, p1, t1), p1);
-    }
-
-    function test_revert_calculateTwap_when_same_timestamp_and_different_price() public {
-        uint256 interval = 30;
-        uint256 t1 = _INIT_BLOCK_TIMESTAMP;
-        uint256 p1 = 100 * 1e8;
-        assertEq(_testCumulativeTwap.update(p1, t1), true);
-
-        uint256 t2 = t1 + interval;
-        uint256 p2 = 120 * 1e8;
-        vm.warp(t2);
-        vm.expectRevert(bytes("CT_IPWCT"));
-        _testCumulativeTwap.calculateTwap(interval, p2, t1);
     }
 }
 
@@ -218,6 +229,30 @@ contract CumulativeTwapCalculateTwapTest is CumulativeTwapCalculateTwapBase {
 
     function test_calculateTwap_when_given_interval_exceeds_observations() public {
         assertEq(_getTwap(46), 0);
+    }
+
+    function test_calculateTwap_when_valid_timestamp_and_price() public {
+        uint256 interval = 30;
+        uint256 t1 = 1000;
+        uint256 p1 = 100 * 1e8;
+        assertEq(_testCumulativeTwap.update(p1, t1), true);
+
+        uint256 t2 = t1 + interval;
+        vm.warp(t2);
+        assertEq(_testCumulativeTwap.calculateTwap(interval, p1, t1), p1);
+    }
+
+    function test_revert_calculateTwap_when_same_timestamp_and_different_price() public {
+        uint256 interval = 30;
+        uint256 t1 = 1000;
+        uint256 p1 = 100 * 1e8;
+        assertEq(_testCumulativeTwap.update(p1, t1), true);
+
+        uint256 t2 = t1 + interval;
+        uint256 p2 = 120 * 1e8;
+        vm.warp(t2);
+        vm.expectRevert(bytes("CT_IPWCT"));
+        _testCumulativeTwap.calculateTwap(interval, p2, t1);
     }
 }
 
