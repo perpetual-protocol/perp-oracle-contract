@@ -72,7 +72,7 @@ contract CumulativeTwap is BlockContext {
         uint256 latestUpdatedTimestamp
     ) internal view returns (uint256) {
         // for the first time calculating
-        if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
+        if ((currentObservationIndex == 0 && observations[0].timestamp == 0) || interval == 0) {
             return 0;
         }
 
