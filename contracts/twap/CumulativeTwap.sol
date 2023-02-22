@@ -67,7 +67,7 @@ contract CumulativeTwap is BlockContext {
     }
 
     /// @dev This function will return 0 in following cases:
-    /// 1. Not enough historical data (0 observation):
+    /// 1. Not enough historical data (0 observation)
     /// 2. Not enough historical data (not enough observation)
     /// 3. interval == 0
     function _calculateTwap(
