@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -19,7 +18,7 @@ contract UniswapV3PriceFeed is IUniswapV3PriceFeed, BlockContext {
 
     uint32 internal constant _TWAP_INTERVAL = 30 * 60;
 
-    address public pool;
+    address public immutable pool;
 
     //
     // EXTERNAL

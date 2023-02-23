@@ -5,16 +5,7 @@ interface IChainlinkPriceFeedV3Event {
     /// @param NotFreezed default state: Chainlink is working as expected
     /// @param NoResponse fails to call Chainlink
     /// @param InvalidTimestamp no timestamp or it’s invalid, either outdated or in the future
-    /// @param AnswerIsOutlier if the answer deviates more than _maxOutlierDeviationRatio
-    enum FreezedReason {
-        NotFreezed,
-        NoResponse,
-        IncorrectDecimals,
-        NoRoundId,
-        InvalidTimestamp,
-        NonPositiveAnswer,
-        AnswerIsOutlier
-    }
+    enum FreezedReason { NotFreezed, NoResponse, IncorrectDecimals, NoRoundId, InvalidTimestamp, NonPositiveAnswer }
 
     event ChainlinkPriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
 }

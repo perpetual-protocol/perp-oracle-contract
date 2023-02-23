@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -19,10 +18,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     // STATE
     //
 
-    uint24 private constant _ONE_HUNDRED_PERCENT_RATIO = 1e6;
     uint8 internal immutable _decimals;
-    uint24 internal immutable _maxOutlierDeviationRatio;
-    uint256 internal immutable _outlierCoolDownPeriod;
     uint256 internal immutable _timeout;
     uint256 internal _lastValidPrice;
     uint256 internal _lastValidTimestamp;
@@ -35,19 +31,12 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     constructor(
         AggregatorV3Interface aggregator,
         uint256 timeout,
-        uint24 maxOutlierDeviationRatio,
-        uint256 outlierCoolDownPeriod,
         uint80 twapInterval
     ) CachedTwap(twapInterval) {
         // CPF_ANC: Aggregator is not contract
         require(address(aggregator).isContract(), "CPF_ANC");
         _aggregator = aggregator;
 
-        // CPF_IMODR: Invalid maxOutlierDeviationRatio
-        require(maxOutlierDeviationRatio < _ONE_HUNDRED_PERCENT_RATIO, "CPF_IMODR");
-        _maxOutlierDeviationRatio = maxOutlierDeviationRatio;
-
-        _outlierCoolDownPeriod = outlierCoolDownPeriod;
         _timeout = timeout;
         _decimals = aggregator.decimals();
     }
@@ -83,7 +72,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     }
 
     function isTimedOut() external view override returns (bool) {
-        return _lastValidTimestamp > 0 && _lastValidTimestamp.add(_timeout) < _blockTimestamp();
+        // Fetch the latest timstamp instead of _lastValidTimestamp is to prevent stale data
+        // when the update() doesn't get triggered.
+        (, uint256 lastestValidTimestamp) = _getCachePrice();
+        return lastestValidTimestamp > 0 && lastestValidTimestamp.add(_timeout) < _blockTimestamp();
     }
 
     function getFreezedReason() external view override returns (FreezedReason) {
@@ -125,9 +117,6 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
             _lastValidPrice = uint256(response.answer);
             _lastValidTimestamp = response.updatedAt;
         }
-        if (_isAnswerIsOutlierAndOverOutlierCoolDownPeriod(freezedReason)) {
-            (_lastValidPrice, _lastValidTimestamp) = _getPriceAndTimestampAfterOutlierCoolDown(response.answer);
-        }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
     }
@@ -142,11 +131,8 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         if (_isNotFreezed(freezedReason)) {
             return (uint256(response.answer), response.updatedAt);
         }
-        if (_isAnswerIsOutlierAndOverOutlierCoolDownPeriod(freezedReason)) {
-            return (_getPriceAndTimestampAfterOutlierCoolDown(response.answer));
-        }
 
-        // if freezed || (AnswerIsOutlier && not yet over _outlierCoolDownPeriod)
+        // if freezed
         return (_lastValidPrice, _lastValidTimestamp);
     }
 
@@ -201,40 +187,11 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         if (response.answer <= 0) {
             return FreezedReason.NonPositiveAnswer;
         }
-        if (_lastValidPrice > 0 && _lastValidTimestamp > 0 && _isOutlier(uint256(response.answer))) {
-            return FreezedReason.AnswerIsOutlier;
-        }
 
         return FreezedReason.NotFreezed;
     }
 
-    function _isOutlier(uint256 price) internal view returns (bool) {
-        uint256 diff = _lastValidPrice >= price ? _lastValidPrice - price : price - _lastValidPrice;
-        uint256 deviationRatio = diff.mul(_ONE_HUNDRED_PERCENT_RATIO).div(_lastValidPrice);
-        return deviationRatio >= _maxOutlierDeviationRatio;
-    }
-
-    /// @dev after freezing for _outlierCoolDownPeriod, we gradually update _lastValidPrice by _maxOutlierDeviationRatio
-    ///      e.g.
-    ///      input: 300 -> 500 -> 630
-    ///      output: 300 -> 300 (wait for _outlierCoolDownPeriod) -> 330 (assuming _maxOutlierDeviationRatio = 10%)
-    function _getPriceAndTimestampAfterOutlierCoolDown(int256 answer) internal view returns (uint256, uint256) {
-        uint24 deviationRatio =
-            uint256(answer) > _lastValidPrice
-                ? _ONE_HUNDRED_PERCENT_RATIO + _maxOutlierDeviationRatio
-                : _ONE_HUNDRED_PERCENT_RATIO - _maxOutlierDeviationRatio;
-        uint256 maxDeviatedPrice = _lastValidPrice.mul(deviationRatio).div(_ONE_HUNDRED_PERCENT_RATIO);
-
-        return (maxDeviatedPrice, _blockTimestamp());
-    }
-
-    function _isNotFreezed(FreezedReason freezedReason) internal view returns (bool) {
+    function _isNotFreezed(FreezedReason freezedReason) internal pure returns (bool) {
         return freezedReason == FreezedReason.NotFreezed;
-    }
-
-    function _isAnswerIsOutlierAndOverOutlierCoolDownPeriod(FreezedReason freezedReason) internal view returns (bool) {
-        return
-            freezedReason == FreezedReason.AnswerIsOutlier &&
-            _blockTimestamp() > _lastValidTimestamp.add(_outlierCoolDownPeriod);
     }
 }

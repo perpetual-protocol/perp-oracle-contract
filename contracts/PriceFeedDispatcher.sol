@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -19,7 +18,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
     Status internal _status = Status.Chainlink;
     UniswapV3PriceFeed internal _uniswapV3PriceFeed;
-    ChainlinkPriceFeedV3 internal _chainlinkPriceFeedV3;
+    ChainlinkPriceFeedV3 internal immutable _chainlinkPriceFeedV3;
 
     //
     // EXTERNAL NON-VIEW
