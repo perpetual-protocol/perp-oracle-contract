@@ -11,7 +11,7 @@ interface BandPriceFeedFixture {
 }
 
 async function bandPriceFeedFixture(): Promise<BandPriceFeedFixture> {
-    const [admin] = await ethers.getSigners();
+    const [admin] = await ethers.getSigners()
     const testStdReferenceFactory = await smock.mock<TestStdReference__factory>("TestStdReference", admin)
     const testStdReference = await testStdReferenceFactory.deploy()
 
@@ -89,14 +89,24 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             expect(observation.priceCumulative).to.eq(parseEther("6000"))
         })
 
-        it("force error, the second update is the same timestamp", async () => {
+        it("force error, the second update is the same price and timestamp", async () => {
+            await updatePrice(400, false)
+
+            roundData.push([parseEther("400"), currentTime, currentTime])
+            bandReference.getReferenceData.returns(() => {
+                return roundData[roundData.length - 1]
+            })
+            await expect(bandPriceFeed.update()).to.be.revertedWith("BPF_NU")
+        })
+
+        it("force error, the second update is the same timestamp but different price", async () => {
             await updatePrice(400, false)
 
             roundData.push([parseEther("440"), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
-            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IT")
+            await expect(bandPriceFeed.update()).to.be.revertedWith("CT_IPWU")
         })
     })
 
@@ -131,8 +141,8 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
             })
 
             it("asking interval more than bandReference has", async () => {
-                const price = await bandPriceFeed.getPrice(46)
-                expect(price).to.eq(parseEther("405"))
+                const price = await bandPriceFeed.getPrice(46) // should directly return latest price
+                await expect(price).to.eq(parseEther("410"))
             })
 
             it("asking interval less than bandReference has", async () => {
@@ -182,101 +192,108 @@ describe("BandPriceFeed/CumulativeTwap Spec", () => {
         beforeEach(async () => {
             currentTimeBefore = currentTime = (await waffle.provider.getBlock("latest")).timestamp
 
-            // fill up 255 observations and the final price will be observations[254] = 624,
-            // and observations[255] is empty
-            for (let i = 0; i < 255; i++) {
+            // fill up 1799 observations and the final price will be observations[1798] = 1798 + 400 = 2198,
+            // and observations[1799] is empty
+            for (let i = 0; i < 1799; i++) {
                 await updatePrice(beginPrice + i)
             }
         })
 
         it("verify status", async () => {
-            expect(await bandPriceFeed.currentObservationIndex()).to.eq(254)
+            expect(await bandPriceFeed.currentObservationIndex()).to.eq(1798)
 
-            // observations[255] shouldn't be updated since we only run 255 times in for loop
-            const observation255 = await bandPriceFeed.observations(255)
-            expect(observation255.price).to.eq(0)
-            expect(observation255.priceCumulative).to.eq(0)
-            expect(observation255.timestamp).to.eq(0)
+            // observations[1799] shouldn't be updated since we only run 1799 times in for loop
+            const observation1799 = await bandPriceFeed.observations(1799)
+            expect(observation1799.price).to.eq(0)
+            expect(observation1799.priceCumulative).to.eq(0)
+            expect(observation1799.timestamp).to.eq(0)
 
-            const observation254 = await bandPriceFeed.observations(254)
-            expect(observation254.price).to.eq(parseEther("654"))
-            expect(observation254.timestamp).to.eq(currentTimeBefore + 15 * 254)
+            const observation1798 = await bandPriceFeed.observations(1798)
+            expect(observation1798.price).to.eq(parseEther("2198"))
+            expect(observation1798.timestamp).to.eq(currentTimeBefore + 15 * 1798)
 
-            // (654 * 15 + 653 * 15 + 652 * 15) / 45 = 653
+            // (2196 * 15 + 2197 * 15 + 2198 * 15) / 45 = 2197
             const price = await bandPriceFeed.getPrice(45)
-            expect(price).to.eq(parseEther("653"))
+            expect(price).to.eq(parseEther("2197"))
         })
 
         it("get price after currentObservationIndex is rotated to 0", async () => {
-            // increase currentObservationIndex to 255
-            await updatePrice(beginPrice + 255)
+            // increase currentObservationIndex to 1799
+            await updatePrice(beginPrice + 1799)
 
             // increase (rotate) currentObservationIndex to 0
             // which will override the first observation which is observations[0]
-            await updatePrice(beginPrice + 256)
+            await updatePrice(beginPrice + 1800)
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
 
-            // (656 * 15 + 655 * 15 + 654 * 15) / 45 = 655
+            // (2200 * 15 + 2199 * 15 + 2198 * 15) / 45 = 2199
             const price = await bandPriceFeed.getPrice(45)
-            expect(price).to.eq(parseEther("655"))
+            expect(price).to.eq(parseEther("2199"))
         })
 
         it("get price after currentObservationIndex is rotated to 10", async () => {
-            await updatePrice(beginPrice + 255)
+            await updatePrice(beginPrice + 1799)
             for (let i = 0; i < 10; i++) {
-                await updatePrice(beginPrice + 256 + i)
+                await updatePrice(beginPrice + 1800 + i)
             }
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(9)
 
-            // (665 * 15 + 664 * 15 + 663 * 15) / 45 = 664
+            // (2207 * 15 + 2208 * 15 + 2209 * 15) / 45 = 2208
             const price = await bandPriceFeed.getPrice(45)
-            expect(price).to.eq(parseEther("664"))
+            expect(price).to.eq(parseEther("2208"))
         })
 
         it("asking interval is exact the same as max allowable interval", async () => {
             // update 2 more times to rotate currentObservationIndex to 0
-            await updatePrice(beginPrice + 255)
+            await updatePrice(beginPrice + 1799)
 
             // this one will override the first observation which is observations[0]
-            await updatePrice(beginPrice + 256, false)
+            await updatePrice(beginPrice + 1800, false)
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
 
-            // (((401 + 655) / 2) * 3825 + 656 * 1 ) / 3,826 = 528.0334553058
-            const price = await bandPriceFeed.getPrice(255 * 15 + 1)
-            expect(price).to.eq("528033455305802404600")
+            // (((401 + 2199) / 2) * (26986-1) + 2200 * 1 ) / 26986 = 1300.0333506263
+            const price = await bandPriceFeed.getPrice(1799 * 15 + 1)
+            expect(price).to.eq("1300033350626250648484")
         })
 
-        it("force error, asking interval more than observation has", async () => {
+        it("get the latest price, if asking interval more than observation has", async () => {
             // update 2 more times to rotate currentObservationIndex to 0
-            await updatePrice(beginPrice + 255)
+            await updatePrice(beginPrice + 1799)
 
             // this one will override the first observation which is observations[0]
-            await updatePrice(beginPrice + 256, false)
+            await updatePrice(beginPrice + 1800, false)
 
             expect(await bandPriceFeed.currentObservationIndex()).to.eq(0)
 
-            // the longest interval = 255 * 15 = 3825, it should be revert when interval > 3826
-            // here, we set interval to 3827 because hardhat increases the timestamp by 1 when any tx happens
-            await expect(bandPriceFeed.getPrice(255 * 15 + 2)).to.be.revertedWith("CT_NEH")
+            // the longest interval = 1799 * 15 = 26985, it should be revert when interval >= 26986
+            // here, we set interval to 26987 because hardhat increases the timestamp by 1 when any tx happens
+            const price = await bandPriceFeed.getPrice(1799 * 15 + 2)
+            const priceWith0Interval = await bandPriceFeed.getPrice(0)
+            await expect(price).to.eq(priceWith0Interval)
         })
     })
 
     describe("price is not updated yet", () => {
+        const price = "100"
+
         beforeEach(async () => {
-            roundData.push([parseEther("100"), currentTime, currentTime])
+            currentTime = (await waffle.provider.getBlock("latest")).timestamp
+            roundData.push([parseEther(price), currentTime, currentTime])
             bandReference.getReferenceData.returns(() => {
                 return roundData[roundData.length - 1]
             })
         })
+
         it("get spot price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+            expect(await bandPriceFeed.getPrice(0)).to.eq(parseEther(price))
         })
 
-        it("force error, get twap price", async () => {
-            await expect(bandPriceFeed.getPrice(900)).to.be.revertedWith("CT_ND")
+        it("get twap price", async () => {
+            // if observation has no data, we'll get latest price
+            expect(await bandPriceFeed.getPrice(900)).to.eq(parseEther(price))
         })
     })
 })

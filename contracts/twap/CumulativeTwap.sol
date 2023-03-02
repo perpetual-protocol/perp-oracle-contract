@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 import { BlockContext } from "../base/BlockContext.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -11,6 +10,7 @@ contract CumulativeTwap is BlockContext {
     //
     // STRUCT
     //
+
     struct Observation {
         uint256 price;
         uint256 priceCumulative;
@@ -18,97 +18,141 @@ contract CumulativeTwap is BlockContext {
     }
 
     //
-    // EVENT
-    //
-    event PriceUpdated(uint256 price, uint256 timestamp, uint8 indexAt);
-
-    //
     // STATE
     //
+
+    uint16 public currentObservationIndex;
+    uint16 internal constant MAX_OBSERVATION = 1800;
     // let's use 15 mins and 1 hr twap as example
-    // if the price is being updated 15 secs, then needs 60 and 240 historical data for 15mins and 1hr twap.
-    Observation[256] public observations;
+    // if the price is updated every 2 secs, 1hr twap Observation should have 60 / 2 * 60 = 1800 slots
+    Observation[MAX_OBSERVATION] public observations;
 
-    uint8 public currentObservationIndex;
+    //
+    // INTERNAL
+    //
 
-    function _update(uint256 price, uint256 lastUpdatedTimestamp) internal {
-        // for the first time update
+    function _update(uint256 price, uint256 lastUpdatedTimestamp) internal returns (bool) {
+        // for the first time updating
         if (currentObservationIndex == 0 && observations[0].timestamp == 0) {
             observations[0] = Observation({ price: price, priceCumulative: 0, timestamp: lastUpdatedTimestamp });
-            emit PriceUpdated(price, lastUpdatedTimestamp, 0);
-            return;
+            return true;
         }
 
-        // CT_IT: invalid timestamp
         Observation memory lastObservation = observations[currentObservationIndex];
-        require(lastUpdatedTimestamp > lastObservation.timestamp, "CT_IT");
 
-        // overflow of currentObservationIndex is desired since currentObservationIndex is uint8 (0 - 255),
-        // so 255 + 1 will be 0
-        currentObservationIndex++;
+        // CT_IT: invalid timestamp
+        require(lastUpdatedTimestamp >= lastObservation.timestamp, "CT_IT");
 
-        uint256 elapsedTime = lastUpdatedTimestamp - lastObservation.timestamp;
+        // DO NOT accept same timestamp and different price
+        // CT_IPWU: invalid price when update
+        if (lastUpdatedTimestamp == lastObservation.timestamp) {
+            require(price == lastObservation.price, "CT_IPWU");
+        }
+
+        // if the price remains still, there's no need for update
+        if (price == lastObservation.price) {
+            return false;
+        }
+
+        // ring buffer index, make sure the currentObservationIndex is less than MAX_OBSERVATION
+        currentObservationIndex = (currentObservationIndex + 1) % MAX_OBSERVATION;
+
+        uint256 timestampDiff = lastUpdatedTimestamp - lastObservation.timestamp;
         observations[currentObservationIndex] = Observation({
-            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * elapsedTime),
+            priceCumulative: lastObservation.priceCumulative + (lastObservation.price * timestampDiff),
             timestamp: lastUpdatedTimestamp,
             price: price
         });
-
-        emit PriceUpdated(price, lastUpdatedTimestamp, currentObservationIndex);
+        return true;
     }
 
-    function _calculateTwapPrice(
+    /// @dev This function will return 0 in following cases:
+    /// 1. Not enough historical data (0 observation)
+    /// 2. Not enough historical data (not enough observation)
+    /// 3. interval == 0
+    function _calculateTwap(
         uint256 interval,
-        uint256 latestPrice,
+        uint256 price,
         uint256 latestUpdatedTimestamp
     ) internal view returns (uint256) {
+        // for the first time calculating
+        if ((currentObservationIndex == 0 && observations[0].timestamp == 0) || interval == 0) {
+            return 0;
+        }
+
         Observation memory latestObservation = observations[currentObservationIndex];
-        if (latestObservation.price == 0) {
-            // CT_ND: no data
-            revert("CT_ND");
+
+        // DO NOT accept same timestamp and different price
+        // CT_IPWCT: invalid price when calculating twap
+        // it's to be consistent with the logic of _update
+        if (latestObservation.timestamp == latestUpdatedTimestamp) {
+            require(price == latestObservation.price, "CT_IPWCT");
         }
 
         uint256 currentTimestamp = _blockTimestamp();
         uint256 targetTimestamp = currentTimestamp.sub(interval);
-        (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 currentCumulativePrice =
             latestObservation.priceCumulative.add(
                 (latestObservation.price.mul(latestUpdatedTimestamp.sub(latestObservation.timestamp))).add(
-                    latestPrice.mul(currentTimestamp.sub(latestUpdatedTimestamp))
+                    price.mul(currentTimestamp.sub(latestUpdatedTimestamp))
                 )
             );
 
-        //
-        //                   beforeOrAt                    atOrAfter
-        //      ------------------+-------------+---------------+------------------
-        //                <-------|             |               |
-        // case 1       targetTimestamp         |               |------->
-        // case 2                               |              targetTimestamp
-        // case 3                          targetTimestamp
-        //
+        // case 1
+        //                                 beforeOrAt     (it doesn't matter)
+        //                              targetTimestamp   atOrAfter
+        //      ------------------+-------------+---------------+----------------->
+
+        // case 2
+        //          (it doesn't matter)     atOrAfter
+        //                   beforeOrAt   targetTimestamp
+        //      ------------------+-------------+--------------------------------->
+
+        // case 3
+        //                   beforeOrAt   targetTimestamp   atOrAfter
+        //      ------------------+-------------+---------------+----------------->
+
+        //                                  atOrAfter
+        //                   beforeOrAt   targetTimestamp
+        //      ------------------+-------------+---------------+----------------->
+
+        (Observation memory beforeOrAt, Observation memory atOrAfter) = _getSurroundingObservations(targetTimestamp);
         uint256 targetCumulativePrice;
-        // case1. not enough historical data or just enough (`==` case)
-        if (targetTimestamp <= beforeOrAt.timestamp) {
-            targetTimestamp = beforeOrAt.timestamp;
+
+        // case1. left boundary
+        if (targetTimestamp == beforeOrAt.timestamp) {
             targetCumulativePrice = beforeOrAt.priceCumulative;
         }
-        // case2. the latest data is older than or equal the request
-        else if (atOrAfter.timestamp <= targetTimestamp) {
-            targetTimestamp = atOrAfter.timestamp;
+        // case2. right boundary
+        else if (atOrAfter.timestamp == targetTimestamp) {
             targetCumulativePrice = atOrAfter.priceCumulative;
+        }
+        // not enough historical data
+        else if (beforeOrAt.timestamp == atOrAfter.timestamp) {
+            return 0;
         }
         // case3. in the middle
         else {
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
-            targetCumulativePrice = beforeOrAt.priceCumulative.add(
-                ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
-                    observationTimeDelta
-                )
-            );
+            // atOrAfter.timestamp == 0 implies beforeOrAt = observations[currentObservationIndex]
+            // which means there's no atOrAfter from _getSurroundingObservations
+            // and atOrAfter.priceCumulative should eaual to targetCumulativePrice
+            if (atOrAfter.timestamp == 0) {
+                targetCumulativePrice =
+                    beforeOrAt.priceCumulative +
+                    (beforeOrAt.price * (targetTimestamp - beforeOrAt.timestamp));
+            } else {
+                uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+                uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+
+                targetCumulativePrice = beforeOrAt.priceCumulative.add(
+                    ((atOrAfter.priceCumulative.sub(beforeOrAt.priceCumulative)).mul(targetTimeDelta)).div(
+                        observationTimeDelta
+                    )
+                );
+            }
         }
 
-        return currentCumulativePrice.sub(targetCumulativePrice).div(currentTimestamp - targetTimestamp);
+        return currentCumulativePrice.sub(targetCumulativePrice).div(interval);
     }
 
     function _getSurroundingObservations(uint256 targetTimestamp)
@@ -116,43 +160,62 @@ contract CumulativeTwap is BlockContext {
         view
         returns (Observation memory beforeOrAt, Observation memory atOrAfter)
     {
-        uint8 index = currentObservationIndex;
-        uint8 beforeOrAtIndex;
-        uint8 atOrAfterIndex;
+        beforeOrAt = observations[currentObservationIndex];
 
-        // run at most 256 times
-        uint256 observationLen = observations.length;
+        // if the target is chronologically at or after the newest observation, we can early return
+        if (observations[currentObservationIndex].timestamp <= targetTimestamp) {
+            // if the observation is the same as the targetTimestamp
+            // atOrAfter doesn't matter
+            // if the observation is less than the targetTimestamp
+            // simply return empty atOrAfter
+            // atOrAfter repesents latest price and timestamp
+            return (beforeOrAt, atOrAfter);
+        }
+
+        // now, set before to the oldest observation
+        beforeOrAt = observations[(currentObservationIndex + 1) % MAX_OBSERVATION];
+        if (beforeOrAt.timestamp == 0) {
+            beforeOrAt = observations[0];
+        }
+
+        // ensure that the target is chronologically at or after the oldest observation
+        // if no enough historical data, simply return two beforeOrAt and return 0 at _calculateTwap
+        if (beforeOrAt.timestamp > targetTimestamp) {
+            return (beforeOrAt, beforeOrAt);
+        }
+
+        return _binarySearch(targetTimestamp);
+    }
+
+    function _binarySearch(uint256 targetTimestamp)
+        private
+        view
+        returns (Observation memory beforeOrAt, Observation memory atOrAfter)
+    {
+        uint256 l = (currentObservationIndex + 1) % MAX_OBSERVATION; // oldest observation
+        uint256 r = l + MAX_OBSERVATION - 1; // newest observation
         uint256 i;
-        for (i = 0; i < observationLen; i++) {
-            if (observations[index].timestamp <= targetTimestamp) {
-                // if the next observation is empty, using the last one
-                // it implies the historical data is not enough
-                if (observations[index].timestamp == 0) {
-                    atOrAfterIndex = beforeOrAtIndex = index + 1;
-                    break;
-                }
-                beforeOrAtIndex = index;
-                atOrAfterIndex = beforeOrAtIndex + 1;
-                break;
+
+        while (true) {
+            i = (l + r) / 2;
+
+            beforeOrAt = observations[i % MAX_OBSERVATION];
+
+            // we've landed on an uninitialized observation, keep searching higher (more recently)
+            if (beforeOrAt.timestamp == 0) {
+                l = i + 1;
+                continue;
             }
-            index--;
-        }
 
-        // not enough historical data to query
-        if (i == observationLen) {
-            // CT_NEH: no enough historical data
-            revert("CT_NEH");
-        }
+            atOrAfter = observations[(i + 1) % MAX_OBSERVATION];
 
-        beforeOrAt = observations[beforeOrAtIndex];
-        atOrAfter = observations[atOrAfterIndex];
+            bool targetAtOrAfter = beforeOrAt.timestamp <= targetTimestamp;
 
-        // if timestamp of the right bound is earlier than timestamp of the left bound,
-        // it means the left bound is the lastest observation.
-        // It implies the latest observation is older than requested
-        // Then we set the right bound to the left bound.
-        if (atOrAfter.timestamp < beforeOrAt.timestamp) {
-            atOrAfter = beforeOrAt;
+            // check if we've found the answer!
+            if (targetAtOrAfter && targetTimestamp <= atOrAfter.timestamp) break;
+
+            if (!targetAtOrAfter) r = i - 1;
+            else l = i + 1;
         }
     }
 }

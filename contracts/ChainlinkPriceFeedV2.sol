@@ -23,7 +23,9 @@ contract ChainlinkPriceFeedV2 is IChainlinkPriceFeed, IPriceFeedV2, BlockContext
     /// @dev anyone can help update it.
     function update() external {
         (, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData();
-        _update(latestPrice, latestTimestamp);
+        bool isUpdated = _update(latestPrice, latestTimestamp);
+        // CPF_NU: not updated
+        require(isUpdated, "CPF_NU");
     }
 
     function cacheTwap(uint256 interval) external override returns (uint256) {
@@ -32,7 +34,8 @@ contract ChainlinkPriceFeedV2 is IChainlinkPriceFeed, IPriceFeedV2, BlockContext
         if (interval == 0 || round == 0) {
             return latestPrice;
         }
-        return _cacheTwap(interval, latestPrice, latestTimestamp);
+        (, uint256 cachedTwap) = _cacheTwap(interval, latestPrice, latestTimestamp);
+        return cachedTwap;
     }
 
     function decimals() external view override returns (uint8) {

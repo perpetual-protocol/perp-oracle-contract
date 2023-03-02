@@ -1,14 +1,13 @@
 import { expect } from "chai"
 import { parseEther } from "ethers/lib/utils"
 import { ethers, waffle } from "hardhat"
-import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeed, TestStdReference } from "../typechain"
+import { BandPriceFeed, ChainlinkPriceFeedV2, TestAggregatorV3, TestPriceFeedV2, TestStdReference } from "../typechain"
 
 interface PriceFeedFixture {
     bandPriceFeed: BandPriceFeed
     bandReference: TestStdReference
     baseAsset: string
 
-    // chainlinik
     chainlinkPriceFeed: ChainlinkPriceFeedV2
     aggregator: TestAggregatorV3
 }
@@ -47,7 +46,7 @@ describe("Cached Twap Spec", () => {
     let chainlinkPriceFeed: ChainlinkPriceFeedV2
     let aggregator: TestAggregatorV3
     let currentTime: number
-    let testPriceFeed: TestPriceFeed
+    let testPriceFeed: TestPriceFeedV2
     let round: number
 
     async function setNextBlockTimestamp(timestamp: number) {
@@ -80,11 +79,11 @@ describe("Cached Twap Spec", () => {
         aggregator = _fixture.aggregator
         round = 0
 
-        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeed")
+        const TestPriceFeedFactory = await ethers.getContractFactory("TestPriceFeedV2")
         testPriceFeed = (await TestPriceFeedFactory.deploy(
             chainlinkPriceFeed.address,
             bandPriceFeed.address,
-        )) as TestPriceFeed
+        )) as TestPriceFeedV2
 
         currentTime = (await waffle.provider.getBlock("latest")).timestamp
         await updatePrice(400)
@@ -121,15 +120,11 @@ describe("Cached Twap Spec", () => {
 
         it("re-calculate cached twap if timestamp moves", async () => {
             const price1 = await testPriceFeed.callStatic.getPrice(45)
+            // timestamp changes due to cacheTwap()
             await testPriceFeed.getPrice(45)
 
-            const price2 = await testPriceFeed.callStatic.getPrice(45)
-            expect(price2.twap).to.eq(price2.cachedTwap)
-            // `getPrice` here is no a view function, it mocked function in TestPriceFeed
-            // and it will update the cache if necessary
-            expect(price2.twap).to.eq(await bandPriceFeed.getPrice(45))
-
-            expect(price1.cachedTwap).to.not.eq(price2.cachedTwap)
+            const price2 = await chainlinkPriceFeed.callStatic.getPrice(45)
+            expect(price1.cachedTwap).to.not.eq(price2)
         })
 
         it("re-calculate twap if block timestamp is different from last cached twap timestamp", async () => {
@@ -149,6 +144,17 @@ describe("Cached Twap Spec", () => {
             const price1 = await bandPriceFeed.getPrice(45)
             const price2 = await bandPriceFeed.getPrice(15)
             // shoule re-calculate twap
+            expect(price2).to.not.eq(price1)
+        })
+
+        it("re-calculate twap if timestamp doesn't change", async () => {
+            const price1 = await testPriceFeed.getPrice(45)
+
+            // forword block timestamp 15sec
+            currentTime += 15
+            await setNextBlockTimestamp(currentTime)
+
+            const price2 = await testPriceFeed.getPrice(45)
             expect(price2).to.not.eq(price1)
         })
     })

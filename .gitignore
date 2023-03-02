@@ -9,3 +9,7 @@ slither
 /.DS_Store
 .idea
 contracts/hardhat-dependency-compiler/*
+forge-cache/
+out/
+coverage-out/
+lcov.info

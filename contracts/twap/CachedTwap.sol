@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma experimental ABIEncoderV2;
 
 import { CumulativeTwap } from "./CumulativeTwap.sol";
 
@@ -17,22 +16,23 @@ abstract contract CachedTwap is CumulativeTwap {
         uint256 interval,
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
-    ) internal virtual returns (uint256) {
-        // if requested interval is not the same as the one we have cached, then call _getPrice() directly
+    ) internal virtual returns (bool, uint256) {
+        // always help update price for CumulativeTwap
+        bool isUpdated = _update(latestPrice, latestUpdatedTimestamp);
+
+        // if interval is not the same as _interval, won't update _lastUpdatedAt & _cachedTwap
+        // and if interval == 0, return latestPrice directly as there won't be twap
         if (_interval != interval) {
-            return _calculateTwapPrice(interval, latestPrice, latestUpdatedTimestamp);
+            return (isUpdated, interval == 0 ? latestPrice : _getTwap(interval, latestPrice, latestUpdatedTimestamp));
         }
 
-        // if twap has been calculated in this block, then return cached value directly
-        if (_blockTimestamp() == _lastUpdatedAt) {
-            return _cachedTwap;
+        // only calculate twap and cache it when there's a new timestamp
+        if (_blockTimestamp() != _lastUpdatedAt) {
+            _lastUpdatedAt = uint160(_blockTimestamp());
+            _cachedTwap = _getTwap(interval, latestPrice, latestUpdatedTimestamp);
         }
 
-        _update(latestPrice, latestUpdatedTimestamp);
-        _lastUpdatedAt = uint160(_blockTimestamp());
-        _cachedTwap = _calculateTwapPrice(interval, latestPrice, latestUpdatedTimestamp);
-
-        return _cachedTwap;
+        return (isUpdated, _cachedTwap);
     }
 
     function _getCachedTwap(
@@ -43,6 +43,17 @@ abstract contract CachedTwap is CumulativeTwap {
         if (_blockTimestamp() == _lastUpdatedAt && interval == _interval) {
             return _cachedTwap;
         }
-        return _calculateTwapPrice(interval, latestPrice, latestUpdatedTimestamp);
+        return _getTwap(interval, latestPrice, latestUpdatedTimestamp);
+    }
+
+    /// @dev since we're plugging this contract to an existing system, we cannot return 0 upon the first call
+    ///      thus, return the latest price instead
+    function _getTwap(
+        uint256 interval,
+        uint256 latestPrice,
+        uint256 latestUpdatedTimestamp
+    ) internal view returns (uint256) {
+        uint256 twap = _calculateTwap(interval, latestPrice, latestUpdatedTimestamp);
+        return twap == 0 ? latestPrice : twap;
     }
 }

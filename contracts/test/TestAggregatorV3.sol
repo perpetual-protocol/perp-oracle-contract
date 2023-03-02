@@ -17,7 +17,7 @@ contract TestAggregatorV3 is AggregatorV3Interface {
 
     constructor() {}
 
-    function decimals() external view override returns (uint8) {
+    function decimals() external view virtual override returns (uint8) {
         return 18;
     }
 
@@ -69,6 +69,7 @@ contract TestAggregatorV3 is AggregatorV3Interface {
     function latestRoundData()
         external
         view
+        virtual
         override
         returns (
             uint80 roundId,

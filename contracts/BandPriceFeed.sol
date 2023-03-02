@@ -38,7 +38,9 @@ contract BandPriceFeed is IPriceFeedV2, BlockContext, CachedTwap {
     /// @dev anyone can help update it.
     function update() external {
         IStdReference.ReferenceData memory bandData = _getReferenceData();
-        _update(bandData.rate, bandData.lastUpdatedBase);
+        bool isUpdated = _update(bandData.rate, bandData.lastUpdatedBase);
+        // BPF_NU: not updated
+        require(isUpdated, "BPF_NU");
     }
 
     function cacheTwap(uint256 interval) external override returns (uint256) {
@@ -46,7 +48,8 @@ contract BandPriceFeed is IPriceFeedV2, BlockContext, CachedTwap {
         if (interval == 0) {
             return latestBandData.rate;
         }
-        return _cacheTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
+        (, uint256 cachedTwap) = _cacheTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
+        return cachedTwap;
     }
 
     //

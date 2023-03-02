@@ -14,7 +14,7 @@ interface ChainlinkPriceFeedFixture {
 }
 
 async function chainlinkPriceFeedFixture(): Promise<ChainlinkPriceFeedFixture> {
-    const [admin] = await ethers.getSigners();
+    const [admin] = await ethers.getSigners()
     const aggregatorFactory = await smock.mock<TestAggregatorV3__factory>("TestAggregatorV3", admin)
     const aggregator = await aggregatorFactory.deploy()
     aggregator.decimals.returns(() => 18)
@@ -86,7 +86,7 @@ describe("ChainlinkPriceFeedV2 Spec", () => {
 
             // update without forward timestamp
             await updatePrice(0, 400, false)
-            await expect(chainlinkPriceFeed.update()).to.be.revertedWith("CT_IT")
+            await expect(chainlinkPriceFeed.update()).to.be.revertedWith("CPF_NU")
         })
     })
 
