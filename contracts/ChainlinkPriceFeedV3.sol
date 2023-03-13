@@ -94,8 +94,16 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return _getFreezedReason(response);
     }
 
+    function getCachePrice() external view override returns (uint256, uint256) {
+        return _getCachePrice();
+    }
+
     function getAggregator() external view override returns (address) {
         return address(_aggregator);
+    }
+
+    function getTimeout() external view override returns (uint256) {
+        return _timeout;
     }
 
     function decimals() external view override returns (uint8) {
