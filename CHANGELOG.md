@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.3] - 2023-03-14
+- Add `ChainlinkPriceFeedV3.getCachePrice` to fetch the latest valid price and updated timestamp.
+- Add `ChainlinkPriceFeedV3.getTimeout` to get timeout config of ChainlinkPriceFeedV3.
+
 ## [0.6.2] - 2023-03-01
 - `observations` extends to `1800` at `CumulativeTwap.sol` to support extreme circumstance.
 - To better enhance above performance, we introduce binary search mimicked from https://github.com/Uniswap/v3-core/blob/05c10bf/contracts/libraries/Oracle.sol#L153.
