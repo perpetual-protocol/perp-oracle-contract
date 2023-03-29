@@ -45,11 +45,11 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
     ///      with the same timestamp will get reverted in CumulativeTwap._update()
     function update() external override {
-        _cachePrice();
+        bool isUpdatedPrice = _cachePrice();
 
-        (bool isUpdated, ) = _cacheTwap(0, _lastValidPrice, _lastValidTimestamp);
+        (bool isUpdatedTwap, ) = _cacheTwap(0, _lastValidPrice, _lastValidTimestamp);
         // CPF_NU: not updated
-        require(isUpdated, "CPF_NU");
+        require(isUpdatedPrice || isUpdatedTwap, "CPF_NU");
     }
 
     /// @inheritdoc IChainlinkPriceFeedV3
@@ -114,19 +114,22 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     // INTERNAL
     //
 
-    function _cachePrice() internal {
+    function _cachePrice() internal returns (bool) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         if (_isAlreadyLatestCache(response)) {
-            return;
+            return false;
         }
 
+        bool isUpdated = false;
         FreezedReason freezedReason = _getFreezedReason(response);
         if (_isNotFreezed(freezedReason)) {
             _lastValidPrice = uint256(response.answer);
             _lastValidTimestamp = response.updatedAt;
+            isUpdated = true;
         }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
+        return isUpdated;
     }
 
     function _getCachePrice() internal view returns (uint256, uint256) {
