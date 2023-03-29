@@ -48,8 +48,7 @@ contract BandPriceFeed is IPriceFeedV2, BlockContext, CachedTwap {
         if (interval == 0) {
             return latestBandData.rate;
         }
-        (, uint256 cachedTwap) = _cacheTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
-        return cachedTwap;
+        return _cacheTwap(interval, latestBandData.rate, latestBandData.lastUpdatedBase);
     }
 
     //
