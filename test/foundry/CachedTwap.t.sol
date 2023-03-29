@@ -10,7 +10,7 @@ contract TestCachedTwap is CachedTwap {
         uint256 interval,
         uint256 latestPrice,
         uint256 latestUpdatedTimestamp
-    ) external returns (bool isUpdated, uint256 cachedTwap) {
+    ) external returns (uint256 cachedTwap) {
         return _cacheTwap(interval, latestPrice, latestUpdatedTimestamp);
     }
 }
@@ -33,30 +33,26 @@ contract CachedTwapTest is Test {
         //      -----+--------+--------+
         //              1200s    1200s
         // price:   100      120      140
-        bool isUpdated;
         uint256 cachedTwap;
 
         uint256 t1 = _INIT_BLOCK_TIMESTAMP;
         uint256 p1 = 100 * 1e8;
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
         assertEq(cachedTwap, p1);
 
         uint256 t2 = t1 + 1200;
         uint256 p2 = 120 * 1e8;
         vm.warp(t2);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
         assertEq(cachedTwap, p1);
 
         uint256 t3 = t2 + 1200;
         uint256 p3 = 140 * 1e8;
         vm.warp(t3);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p3, t3);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p3, t3);
         assertEq(cachedTwap, p2);
     }
 
@@ -65,28 +61,24 @@ contract CachedTwapTest is Test {
         //      -----+--------+------
         //              1200s
         // price:   100      120
-        bool isUpdated;
         uint256 cachedTwap;
 
         uint256 t1 = _INIT_BLOCK_TIMESTAMP;
         uint256 p1 = 100 * 1e8;
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
         assertEq(cachedTwap, p1);
 
         uint256 t2 = t1 + 1200;
         uint256 p2 = 120 * 1e8;
         vm.warp(t2);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
         assertEq(cachedTwap, p1);
 
         vm.warp(t2 + 1200);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
-        assertEq(isUpdated, false);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
         assertEq(cachedTwap, p2);
     }
 
@@ -95,22 +87,19 @@ contract CachedTwapTest is Test {
         //      -----+--------+------
         //              1200s
         // price:   100      120
-        bool isUpdated;
         uint256 cachedTwap;
 
         uint256 t1 = _INIT_BLOCK_TIMESTAMP;
         uint256 p1 = 100 * 1e8;
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p1, t1);
         assertEq(cachedTwap, p1);
 
         uint256 t2 = t1 + 1200;
         uint256 p2 = 120 * 1e8;
         vm.warp(t2);
 
-        (isUpdated, cachedTwap) = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
-        assertEq(isUpdated, true);
+        cachedTwap = _testCachedTwap.cacheTwap(_INTERVAL, p2, t2);
         assertEq(cachedTwap, p1);
 
         uint256 p3 = 140 * 1e8;
