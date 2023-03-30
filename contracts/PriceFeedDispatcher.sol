@@ -63,11 +63,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
             return _formatFromDecimalsToX10_18(_uniswapV3PriceFeed.getPrice(), _uniswapV3PriceFeed.decimals());
         }
 
-        return
-            _formatFromDecimalsToX10_18(
-                _chainlinkPriceFeedV3.getCachedTwap(interval),
-                _chainlinkPriceFeedV3.decimals()
-            );
+        return _formatFromDecimalsToX10_18(_chainlinkPriceFeedV3.getPrice(interval), _chainlinkPriceFeedV3.decimals());
     }
 
     function getChainlinkPriceFeedV3() external view override returns (address) {
