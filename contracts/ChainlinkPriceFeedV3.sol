@@ -41,6 +41,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         _decimals = aggregator.decimals();
     }
 
+    /// @inheritdoc IPriceFeedUpdate
     /// @notice anyone can help with updating
     /// @dev this function is used by PriceFeedUpdater for _lastValidPrice and twap updating,
     ///      The keeper can invoke callstatic on this function to check if _lastValidPrice needs to be updated.
@@ -64,17 +65,19 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     // EXTERNAL VIEW
     //
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getLastValidTimestamp() external view override returns (uint256) {
         return _lastValidTimestamp;
     }
 
     /// @inheritdoc IChainlinkPriceFeedV3
-    function getCachedTwap(uint256 interval) external view override returns (uint256) {
-        (uint256 latestValidPrice, uint256 latestValidTime) = _getCachedPrice();
+    function getPrice(uint256 interval) external view override returns (uint256) {
+        (uint256 latestValidPrice, uint256 latestValidTime) = _getLatestOrCachedPrice();
 
         if (interval == 0) {
             return latestValidPrice;
@@ -83,30 +86,36 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return _getCachedTwap(interval, latestValidPrice, latestValidTime);
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
+    function getLatestOrCachedPrice() external view override returns (uint256, uint256) {
+        return _getLatestOrCachedPrice();
+    }
+
+    /// @inheritdoc IChainlinkPriceFeedV3
     function isTimedOut() external view override returns (bool) {
         // Fetch the latest timstamp instead of _lastValidTimestamp is to prevent stale data
         // when the update() doesn't get triggered.
-        (, uint256 lastestValidTimestamp) = _getCachedPrice();
+        (, uint256 lastestValidTimestamp) = _getLatestOrCachedPrice();
         return lastestValidTimestamp > 0 && lastestValidTimestamp.add(_timeout) < _blockTimestamp();
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getFreezedReason() external view override returns (FreezedReason) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         return _getFreezedReason(response);
     }
 
-    function getCachedPrice() external view override returns (uint256, uint256) {
-        return _getCachedPrice();
-    }
-
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getAggregator() external view override returns (address) {
         return address(_aggregator);
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getTimeout() external view override returns (uint256) {
         return _timeout;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function decimals() external view override returns (uint8) {
         return _decimals;
     }
@@ -133,7 +142,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return isUpdated;
     }
 
-    function _getCachedPrice() internal view returns (uint256, uint256) {
+    function _getLatestOrCachedPrice() internal view returns (uint256, uint256) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         if (_isAlreadyLatestCache(response)) {
             return (_lastValidPrice, _lastValidTimestamp);

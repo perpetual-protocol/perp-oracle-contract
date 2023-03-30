@@ -24,19 +24,25 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
     /// @dev this is the non-view version of cacheTwap() without return value
     function cacheTwap(uint256 interval) external;
 
+    /// @notice Get the last cached valid price
     function getLastValidPrice() external view returns (uint256);
 
+    /// @notice Get the last cached valid timestamp
     function getLastValidTimestamp() external view returns (uint256);
 
+    /// @notice If the interval is zero, returns the latest valid price.
+    ///         Else, returns TWAP calculating with the latest valid price and timestamp.
     /// @param interval twap interval
     /// @dev this is the view version of cacheTwap()
-    function getCachedTwap(uint256 interval) external view returns (uint256);
+    function getPrice(uint256 interval) external view returns (uint256);
+
+    /// @notice Retrieve the latest price and timestamp from Chainlink aggregator,
+    ///         or return the last cached valid price and timestamp if the aggregator hasn't been updated or is frozen.
+    function getLatestOrCachedPrice() external view returns (uint256, uint256);
 
     function isTimedOut() external view returns (bool);
 
     function getFreezedReason() external view returns (FreezedReason);
-
-    function getCachedPrice() external view returns (uint256, uint256);
 
     function getAggregator() external view returns (address);
 

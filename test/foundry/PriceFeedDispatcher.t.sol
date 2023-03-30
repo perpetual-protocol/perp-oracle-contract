@@ -116,7 +116,7 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
 
         vm.mockCall(
             address(_chainlinkPriceFeed),
-            abi.encodeWithSelector(_chainlinkPriceFeed.getCachedTwap.selector),
+            abi.encodeWithSelector(_chainlinkPriceFeed.getPrice.selector),
             abi.encode(100 * 1e8)
         );
     }
