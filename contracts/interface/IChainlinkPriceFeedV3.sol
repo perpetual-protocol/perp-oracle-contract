@@ -36,7 +36,7 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
 
     function getFreezedReason() external view returns (FreezedReason);
 
-    function getCachePrice() external view returns (uint256, uint256);
+    function getCachedPrice() external view returns (uint256, uint256);
 
     function getAggregator() external view returns (address);
 
