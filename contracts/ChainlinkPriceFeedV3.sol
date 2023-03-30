@@ -42,9 +42,9 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     }
 
     /// @notice anyone can help with updating
-    /// @dev this function is used by PriceFeedUpdater for _lastValidPrice and twap updating,
-    ///      The keeper can invoke callstatic on this function to check if _lastValidPrice needs to be updated.
-    ///      If _lastValidPrice is updated, then update the observation array for twap calculating.
+    /// @dev this function is used by PriceFeedUpdater for updating _lastValidPrice,
+    ///      _lastValidTimestamp and observation arry.
+    ///      The keeper can invoke callstatic on this function to check if those states nened to be updated.
     function update() external override {
         bool isUpdated = _cachePrice();
         // CPF_NU: not updated
