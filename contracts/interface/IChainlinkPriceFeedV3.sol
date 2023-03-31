@@ -2,9 +2,12 @@
 pragma solidity 0.7.6;
 
 interface IChainlinkPriceFeedV3Event {
-    /// @param NotFreezed default state: Chainlink is working as expected
-    /// @param NoResponse fails to call Chainlink
-    /// @param InvalidTimestamp no timestamp or it’s invalid, either outdated or in the future
+    /// @param NotFreezed Default state: Chainlink is working as expected
+    /// @param NoResponse Fails to call Chainlink
+    /// @param IncorrectDecimals Inconsistent decimals between aggregator and price feed
+    /// @param NoRoundId Zero round Id
+    /// @param InvalidTimestamp No timestamp or it’s invalid, either outdated or in the future
+    /// @param NonPositiveAnswer Price is zero or negative
     enum FreezedReason { NotFreezed, NoResponse, IncorrectDecimals, NoRoundId, InvalidTimestamp, NonPositiveAnswer }
 
     event ChainlinkPriceUpdated(uint256 price, uint256 timestamp, FreezedReason freezedReason);
@@ -19,34 +22,43 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
         uint8 decimals;
     }
 
-    /// @param interval twap interval
-    ///        when 0, cache price only, without twap; else, cache price & twap
-    /// @dev this is the non-view version of cacheTwap() without return value
+    /// @param interval TWAP interval
+    ///        when 0, cache price only, without TWAP; else, cache price & twap
+    /// @dev This is the non-view version of cacheTwap() without return value
     function cacheTwap(uint256 interval) external;
 
     /// @notice Get the last cached valid price
-    function getLastValidPrice() external view returns (uint256);
+    /// @return price The last cached valid price
+    function getLastValidPrice() external view returns (uint256 price);
 
     /// @notice Get the last cached valid timestamp
-    function getLastValidTimestamp() external view returns (uint256);
+    /// @return timestamp The last cached valid timestamp
+    function getLastValidTimestamp() external view returns (uint256 timestamp);
 
     /// @notice If the interval is zero, returns the latest valid price.
     ///         Else, returns TWAP calculating with the latest valid price and timestamp.
-    /// @param interval twap interval
-    /// @dev this is the view version of cacheTwap()
-    function getPrice(uint256 interval) external view returns (uint256);
+    /// @dev This is the view version of cacheTwap()
+    /// @param interval TWAP interval
+    /// @return price The last valid price or TWAP
+    function getPrice(uint256 interval) external view returns (uint256 price);
 
     /// @notice Retrieve the latest price and timestamp from Chainlink aggregator,
     ///         or return the last cached valid price and timestamp if the aggregator hasn't been updated or is frozen.
-    function getLatestOrCachedPrice() external view returns (uint256, uint256);
+    /// @return price The latest valid price
+    /// @return timestamp The latest valid timestamp
+    function getLatestOrCachedPrice() external view returns (uint256 price, uint256 timestamp);
 
-    function isTimedOut() external view returns (bool);
+    function isTimedOut() external view returns (bool isTimedOut);
 
-    function getFreezedReason() external view returns (FreezedReason);
+    /// @return reason The freezen reason
+    function getFreezedReason() external view returns (FreezedReason reason);
 
-    function getAggregator() external view returns (address);
+    /// @return aggregator The address of Chainlink price feed aggregator
+    function getAggregator() external view returns (address aggregator);
 
-    function getTimeout() external view returns (uint256);
+    /// @return period The timeout period
+    function getTimeout() external view returns (uint256 period);
 
-    function decimals() external view returns (uint8);
+    /// @return decimals The decimals of price feed
+    function decimals() external view returns (uint8 decimals);
 }
