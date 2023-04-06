@@ -34,8 +34,7 @@ contract ChainlinkPriceFeedV2 is IChainlinkPriceFeed, IPriceFeedV2, BlockContext
         if (interval == 0 || round == 0) {
             return latestPrice;
         }
-        (, uint256 cachedTwap) = _cacheTwap(interval, latestPrice, latestTimestamp);
-        return cachedTwap;
+        return _cacheTwap(interval, latestPrice, latestTimestamp);
     }
 
     function decimals() external view override returns (uint8) {

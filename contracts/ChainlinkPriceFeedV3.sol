@@ -41,15 +41,17 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         _decimals = aggregator.decimals();
     }
 
+    /// @inheritdoc IPriceFeedUpdate
     /// @notice anyone can help with updating
-    /// @dev keep this function for PriceFeedUpdater for updating, since multiple updates
-    ///      with the same timestamp will get reverted in CumulativeTwap._update()
+    /// @dev this function is used by PriceFeedUpdater for updating _lastValidPrice,
+    ///      _lastValidTimestamp and observation arry.
+    ///      The keeper can invoke callstatic on this function to check if those states nened to be updated.
     function update() external override {
-        _cachePrice();
-
-        (bool isUpdated, ) = _cacheTwap(0, _lastValidPrice, _lastValidTimestamp);
+        bool isUpdated = _cachePrice();
         // CPF_NU: not updated
         require(isUpdated, "CPF_NU");
+
+        _update(_lastValidPrice, _lastValidTimestamp);
     }
 
     /// @inheritdoc IChainlinkPriceFeedV3
@@ -63,17 +65,19 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     // EXTERNAL VIEW
     //
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getLastValidPrice() external view override returns (uint256) {
         return _lastValidPrice;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getLastValidTimestamp() external view override returns (uint256) {
         return _lastValidTimestamp;
     }
 
     /// @inheritdoc IChainlinkPriceFeedV3
-    function getCachedTwap(uint256 interval) external view override returns (uint256) {
-        (uint256 latestValidPrice, uint256 latestValidTime) = _getCachePrice();
+    function getPrice(uint256 interval) external view override returns (uint256) {
+        (uint256 latestValidPrice, uint256 latestValidTime) = _getLatestOrCachedPrice();
 
         if (interval == 0) {
             return latestValidPrice;
@@ -82,30 +86,36 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return _getCachedTwap(interval, latestValidPrice, latestValidTime);
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
+    function getLatestOrCachedPrice() external view override returns (uint256, uint256) {
+        return _getLatestOrCachedPrice();
+    }
+
+    /// @inheritdoc IChainlinkPriceFeedV3
     function isTimedOut() external view override returns (bool) {
         // Fetch the latest timstamp instead of _lastValidTimestamp is to prevent stale data
         // when the update() doesn't get triggered.
-        (, uint256 lastestValidTimestamp) = _getCachePrice();
+        (, uint256 lastestValidTimestamp) = _getLatestOrCachedPrice();
         return lastestValidTimestamp > 0 && lastestValidTimestamp.add(_timeout) < _blockTimestamp();
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getFreezedReason() external view override returns (FreezedReason) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         return _getFreezedReason(response);
     }
 
-    function getCachePrice() external view override returns (uint256, uint256) {
-        return _getCachePrice();
-    }
-
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getAggregator() external view override returns (address) {
         return address(_aggregator);
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function getTimeout() external view override returns (uint256) {
         return _timeout;
     }
 
+    /// @inheritdoc IChainlinkPriceFeedV3
     function decimals() external view override returns (uint8) {
         return _decimals;
     }
@@ -114,22 +124,25 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
     // INTERNAL
     //
 
-    function _cachePrice() internal {
+    function _cachePrice() internal returns (bool) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         if (_isAlreadyLatestCache(response)) {
-            return;
+            return false;
         }
 
+        bool isUpdated = false;
         FreezedReason freezedReason = _getFreezedReason(response);
         if (_isNotFreezed(freezedReason)) {
             _lastValidPrice = uint256(response.answer);
             _lastValidTimestamp = response.updatedAt;
+            isUpdated = true;
         }
 
         emit ChainlinkPriceUpdated(_lastValidPrice, _lastValidTimestamp, freezedReason);
+        return isUpdated;
     }
 
-    function _getCachePrice() internal view returns (uint256, uint256) {
+    function _getLatestOrCachedPrice() internal view returns (uint256, uint256) {
         ChainlinkResponse memory response = _getChainlinkResponse();
         if (_isAlreadyLatestCache(response)) {
             return (_lastValidPrice, _lastValidTimestamp);

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.5] - 2023-03-31
+- Refine natspec
+
+## [0.6.4] - 2023-03-30
+- Rename `ChainlinkPriceFeedV3.getCachedTwap` to `ChainlinkPriceFeedV3.getPrice`.
+- Rename `ChainlinkPriceFeedV3.getCachedPrice` to `ChainlinkPriceFeedV3.getLatestOrCachedPrice`.
+
 ## [0.6.3] - 2023-03-14
 - Add `ChainlinkPriceFeedV3.getCachePrice` to fetch the latest valid price and updated timestamp.
 - Add `ChainlinkPriceFeedV3.getTimeout` to get timeout config of ChainlinkPriceFeedV3.
