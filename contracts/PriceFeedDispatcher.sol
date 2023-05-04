@@ -58,12 +58,8 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     //
 
     /// @inheritdoc IPriceFeedDispatcher
-    function getDispatchedPrice(uint256 interval) external view override returns (uint256) {
-        if (isToUseUniswapV3PriceFeed()) {
-            return _formatFromDecimalsToX10_18(_uniswapV3PriceFeed.getPrice(), _uniswapV3PriceFeed.decimals());
-        }
-
-        return _formatFromDecimalsToX10_18(_chainlinkPriceFeedV3.getPrice(interval), _chainlinkPriceFeedV3.decimals());
+    function getPrice(uint256 interval) external view override returns (uint256) {
+        return getDispatchedPrice(interval);
     }
 
     function getChainlinkPriceFeedV3() external view override returns (address) {
@@ -81,6 +77,15 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     //
     // PUBLIC
     //
+
+    /// @inheritdoc IPriceFeedDispatcher
+    function getDispatchedPrice(uint256 interval) public view override returns (uint256) {
+        if (isToUseUniswapV3PriceFeed()) {
+            return _formatFromDecimalsToX10_18(_uniswapV3PriceFeed.getPrice(), _uniswapV3PriceFeed.decimals());
+        }
+
+        return _formatFromDecimalsToX10_18(_chainlinkPriceFeedV3.getPrice(interval), _chainlinkPriceFeedV3.decimals());
+    }
 
     function isToUseUniswapV3PriceFeed() public view returns (bool) {
         return
@@ -101,7 +106,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
         return
             fromDecimals > toDecimals
-                ? value.div(10**(fromDecimals - toDecimals))
-                : value.mul(10**(toDecimals - fromDecimals));
+                ? value.div(10 ** (fromDecimals - toDecimals))
+                : value.mul(10 ** (toDecimals - fromDecimals));
     }
 }

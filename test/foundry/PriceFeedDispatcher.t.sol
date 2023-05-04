@@ -179,6 +179,7 @@ contract PriceFeedDispatcherTest is IPriceFeedDispatcherEvent, PriceFeedDispatch
     function _dispatchPrice_and_assertEq_getDispatchedPrice(uint256 price) internal {
         _priceFeedDispatcher.dispatchPrice(0);
         assertEq(_priceFeedDispatcher.getDispatchedPrice(0), price);
+        assertEq(_priceFeedDispatcher.getPrice(0), price);
     }
 
     function _expect_emit_event_from_PriceFeedDispatcher() internal {
