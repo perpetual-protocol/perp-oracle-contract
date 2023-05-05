@@ -25,5 +25,5 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
 
     function getUniswapV3PriceFeed() external view returns (address);
 
-    function decimals() external view returns (uint8);
+    function decimals() external pure returns (uint8);
 }
