@@ -78,7 +78,7 @@ contract PriceFeedDispatcher is IPriceFeed, IPriceFeedDispatcher, Ownable, Block
     //
 
     /// @inheritdoc IPriceFeed
-    function decimals() external pure override returns (uint8) {
+    function decimals() external pure override(IPriceFeed, IPriceFeedDispatcher) returns (uint8) {
         return _DECIMALS;
     }
 
