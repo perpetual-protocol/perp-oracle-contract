@@ -106,7 +106,7 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
 
         return
             fromDecimals > toDecimals
-                ? value.div(10 ** (fromDecimals - toDecimals))
-                : value.mul(10 ** (toDecimals - fromDecimals));
+                ? value.div(10**(fromDecimals - toDecimals))
+                : value.mul(10**(toDecimals - fromDecimals));
     }
 }
