@@ -24,4 +24,6 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     function getChainlinkPriceFeedV3() external view returns (address);
 
     function getUniswapV3PriceFeed() external view returns (address);
+
+    function decimals() external view returns (uint8);
 }
