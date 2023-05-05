@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
 
-import "./IPriceFeed.sol";
-
 interface IPriceFeedDispatcherEvent {
     enum Status { Chainlink, UniswapV3 }
     event StatusUpdated(Status status);
