@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.7.6;
 
+import "./IPriceFeed.sol";
+
 interface IPriceFeedDispatcherEvent {
     enum Status { Chainlink, UniswapV3 }
     event StatusUpdated(Status status);
@@ -24,10 +26,4 @@ interface IPriceFeedDispatcher is IPriceFeedDispatcherEvent {
     function getChainlinkPriceFeedV3() external view returns (address);
 
     function getUniswapV3PriceFeed() external view returns (address);
-
-    function decimals() external pure returns (uint8);
-
-    /// @dev The same as getDispatchedPrice, it's for backward-compatibility
-    /// @param interval The interval represents twap interval.
-    function getPrice(uint256 interval) external view returns (uint256);
 }

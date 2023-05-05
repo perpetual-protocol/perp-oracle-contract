@@ -6,11 +6,12 @@ import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { BlockContext } from "./base/BlockContext.sol";
+import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IPriceFeedDispatcher } from "./interface/IPriceFeedDispatcher.sol";
 import { UniswapV3PriceFeed } from "./UniswapV3PriceFeed.sol";
 import { ChainlinkPriceFeedV3 } from "./ChainlinkPriceFeedV3.sol";
 
-contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
+contract PriceFeedDispatcher is IPriceFeed, IPriceFeedDispatcher, Ownable, BlockContext {
     using SafeMath for uint256;
     using Address for address;
 
@@ -57,19 +58,26 @@ contract PriceFeedDispatcher is IPriceFeedDispatcher, Ownable, BlockContext {
     // EXTERNAL VIEW
     //
 
-    /// @inheritdoc IPriceFeedDispatcher
+    /// @inheritdoc IPriceFeed
     function getPrice(uint256 interval) external view override returns (uint256) {
         return getDispatchedPrice(interval);
     }
 
+    /// @inheritdoc IPriceFeedDispatcher
     function getChainlinkPriceFeedV3() external view override returns (address) {
         return address(_chainlinkPriceFeedV3);
     }
 
+    /// @inheritdoc IPriceFeedDispatcher
     function getUniswapV3PriceFeed() external view override returns (address) {
         return address(_uniswapV3PriceFeed);
     }
 
+    //
+    // EXTERNAL PURE
+    //
+
+    /// @inheritdoc IPriceFeed
     function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
