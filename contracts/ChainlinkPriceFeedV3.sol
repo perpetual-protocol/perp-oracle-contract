@@ -5,12 +5,13 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import { IChainlinkPriceFeed } from "./interface/IChainlinkPriceFeed.sol";
+import { IPriceFeed } from "./interface/IPriceFeed.sol";
 import { IChainlinkPriceFeedV3 } from "./interface/IChainlinkPriceFeedV3.sol";
 import { IPriceFeedUpdate } from "./interface/IPriceFeedUpdate.sol";
 import { BlockContext } from "./base/BlockContext.sol";
 import { CachedTwap } from "./twap/CachedTwap.sol";
 
-contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockContext, CachedTwap {
+contract ChainlinkPriceFeedV3 is IPriceFeed, IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockContext, CachedTwap {
     using SafeMath for uint256;
     using Address for address;
 
@@ -75,7 +76,10 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return _lastValidTimestamp;
     }
 
-    /// @inheritdoc IChainlinkPriceFeedV3
+    /// @inheritdoc IPriceFeed
+    /// @dev This is the view version of cacheTwap().
+    ///      If the interval is zero, returns the latest valid price.
+    ///         Else, returns TWAP calculating with the latest valid price and timestamp.
     function getPrice(uint256 interval) external view override returns (uint256) {
         (uint256 latestValidPrice, uint256 latestValidTime) = _getLatestOrCachedPrice();
 
@@ -115,7 +119,7 @@ contract ChainlinkPriceFeedV3 is IChainlinkPriceFeedV3, IPriceFeedUpdate, BlockC
         return _timeout;
     }
 
-    /// @inheritdoc IChainlinkPriceFeedV3
+    /// @inheritdoc IPriceFeed
     function decimals() external view override returns (uint8) {
         return _decimals;
     }

@@ -35,13 +35,6 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
     /// @return timestamp The last cached valid timestamp
     function getLastValidTimestamp() external view returns (uint256 timestamp);
 
-    /// @notice If the interval is zero, returns the latest valid price.
-    ///         Else, returns TWAP calculating with the latest valid price and timestamp.
-    /// @dev This is the view version of cacheTwap()
-    /// @param interval TWAP interval
-    /// @return price The last valid price or TWAP
-    function getPrice(uint256 interval) external view returns (uint256 price);
-
     /// @notice Retrieve the latest price and timestamp from Chainlink aggregator,
     ///         or return the last cached valid price and timestamp if the aggregator hasn't been updated or is frozen.
     /// @return price The latest valid price
@@ -58,7 +51,4 @@ interface IChainlinkPriceFeedV3 is IChainlinkPriceFeedV3Event {
 
     /// @return period The timeout period
     function getTimeout() external view returns (uint256 period);
-
-    /// @return decimals The decimals of price feed
-    function decimals() external view returns (uint8 decimals);
 }
