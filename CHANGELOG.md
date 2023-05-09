@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.7] - 2023-05-05
+- Add `IPriceFeedDispatcher.decimals` back for backward compatible.
+
+## [0.6.6] - 2023-05-05
+- Add `PriceFeedDispatcher.getPrice` for backward compatible.
+
 ## [0.6.5] - 2023-03-31
 - Refine natspec
 
