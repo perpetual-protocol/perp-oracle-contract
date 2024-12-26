@@ -61,6 +61,9 @@ contract ChainlinkPriceFeedV1R1 is IChainlinkPriceFeedR1, IPriceFeed, BlockConte
         // Answer == 1: Sequencer is down
         require(answer == 0, "CPF_SD");
 
+        // startedAt timestamp will be 0 when the round is invalid.
+        require(startedAt > 0, "CPF_IR");
+
         // Make sure the grace period has passed after the sequencer is back up.
         uint256 timeSinceUp = block.timestamp - startedAt;
         // CPF_GPNO: Grace Period Not Over
