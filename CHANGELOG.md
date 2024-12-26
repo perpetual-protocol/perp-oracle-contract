@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.8] - 2024-12-25
+- check `startedAt > 0` in `ChainlinkPriceFeedV1R1.getPrice`
+
 ## [0.6.7] - 2023-05-05
 - Add `IPriceFeedDispatcher.decimals` back for backward compatible.
 
